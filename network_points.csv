@@ -1,2 +1,2 @@
-x,y,tipo,identificador,color,rack,puerto,dependencia,lugar,mac
-552,1067,SWITCH,SWA,#00FF00,RK1,10.0,TI,Sistemas,
+x,y,tipo,identificador,color,rack,puerto,dependencia,lugar,mac,nomenclatura
+552,878,SWITCH,SWA,#00FF00,RK1,13,CM,Sistemas,,PPV-13

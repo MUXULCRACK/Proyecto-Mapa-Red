@@ -34,10 +34,10 @@ def create_or_fix_csv(filename, columns):
 # ===========================================
 # CARGAR DATOS
 # ===========================================
-df = create_or_fix_csv(CSV_FILE, ["x","y","tipo","identificador","color","rack","puerto","dependencia","lugar","mac"])
-df_deleted = create_or_fix_csv(DELETED_CSV_FILE, ["x","y","tipo","identificador","color","rack","puerto","dependencia","lugar","mac","fecha_hora","ip"])
+df = create_or_fix_csv(CSV_FILE, ["x","y","tipo","identificador","color","rack","puerto","dependencia","lugar","mac","nomenclatura"])
+df_deleted = create_or_fix_csv(DELETED_CSV_FILE, ["x","y","tipo","identificador","color","rack","puerto","dependencia","lugar","mac","fecha_hora","ip","nomenclatura"])
 
-df = df.drop_duplicates(subset=["rack", "tipo", "identificador", "puerto"], keep="first")
+df = df.drop_duplicates(subset=["x", "y"], keep="first")
 
 cat_rack = create_or_fix_csv(CAT_RACK, ["rack"])
 cat_switch = create_or_fix_csv(CAT_SWITCH, ["rack", "switch"])
@@ -141,28 +141,29 @@ if "last_click" in st.session_state:
     c_data = st.session_state["last_click"]
     # Contenedor principal para el formulario de creación
     with st.container(border=True):
-        st.subheader("➕ Agregar Nuevo Punto")
+        st.subheader("➕ Agregar Nuevo Punto de Red")
         st.info(f"📍 Coordenadas: X={c_data['x']}, Y={c_data['y']}")
         
         # Selector de estado (debe estar fuera del st.form para ser reactivo)
-        estado_sel = st.selectbox("Estado del equipo:", list(colores_a_nombres.values()), key="new_point_status")
+        estado_sel = st.selectbox("Estado del Punto de Red:", list(colores_a_nombres.values()), key="new_point_status")
         color_sel = [c for c, n in colores_a_nombres.items() if n == estado_sel][0]
         is_completo = "VERDE" in estado_sel or "ROJO" in estado_sel
 
         with st.form("crear_punto"):
+            nom_sel = st.text_input("Nombre del Punto (Nomenclatura):", help="Ej: PTO-01, RECEPCIÓN-A, etc.")
             if is_completo:
-                st.markdown("**Información Técnica**")
+                st.markdown("**Conexión al Rack (Destino)**")
                 col_c1, col_c2 = st.columns(2)
                 with col_c1:
-                    r_sel = st.selectbox("Rack:", cat_rack["rack"])
-                    t_sel = st.selectbox("Tipo de equipo:", ["SWITCH", "PATCH PANEL"])
+                    r_sel = st.selectbox("Rack de Destino:", cat_rack["rack"])
+                    t_sel = st.selectbox("Tipo de Conexión:", ["SWITCH", "PATCH PANEL"])
                 with col_c2:
                     if t_sel == "SWITCH":
                         l_ids = cat_switch[cat_switch["rack"] == r_sel]["switch"].tolist()
                     else:
                         l_ids = cat_patch[cat_patch["rack"] == r_sel]["patch_panel"].tolist()
-                    id_sel = st.selectbox("Seleccionar Equipo:", l_ids if l_ids else ["(No hay)"])
-                    port_sel = st.text_input("Número de Puerto:")
+                    id_sel = st.selectbox("Equipo de Destino:", l_ids if l_ids else ["(No hay)"])
+                    port_sel = st.text_input("Puerto en el Equipo:")
                     mac_sel = "" # Campo MAC oculto por solicitud del usuario
                 
                 st.markdown("---")
@@ -182,12 +183,19 @@ if "last_click" in st.session_state:
                     place_sel = st.selectbox("Lugar:", cat_lugar["lugar"])
 
             if st.form_submit_button("✅ Guardar Punto", use_container_width=True):
+                # Validar Nomenclatura Única
+                nom_existe = nom_sel in df["nomenclatura"].astype(str).values
+                
                 if is_completo and (not r_sel or not id_sel or not port_sel or id_sel == "(No hay)"):
                     st.error("❌ Por favor completa todos los campos técnicos.")
+                elif not nom_sel:
+                    st.error("❌ Por favor asigna una Nomenclatura o Nombre al punto.")
+                elif nom_existe:
+                    st.error(f"❌ La nomenclatura '**{nom_sel}**' ya está en uso por otro punto activo.")
                 elif is_completo and not port_sel.isnumeric():
                     st.error("❌ El puerto debe ser un número.")
                 else:
-                    new_row = {"x": c_data["x"], "y": c_data["y"], "tipo": t_sel, "identificador": id_sel, "color": color_sel, "rack": r_sel, "puerto": port_sel, "dependencia": dep_sel, "lugar": place_sel, "mac": mac_sel}
+                    new_row = {"x": c_data["x"], "y": c_data["y"], "tipo": t_sel, "identificador": id_sel, "color": color_sel, "rack": r_sel, "puerto": port_sel, "dependencia": dep_sel, "lugar": place_sel, "mac": mac_sel, "nomenclatura": nom_sel}
                     df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
                     df.to_csv(CSV_FILE, index=False)
                     del st.session_state["last_click"]
@@ -206,13 +214,13 @@ with col_f1:
 with col_f2:
     df_f = df.copy()
     if filtro_modo == "Rack y Equipo":
-        st.markdown("**Búsqueda técnica combinada:**")
+        st.markdown("**Búsqueda por Conexión al Rack:**")
         col_r1, col_r2 = st.columns(2)
         with col_r1:
             rack_list = ["Todos"] + list(cat_rack["rack"])
-            f_rk = st.selectbox("Rack:", rack_list, key="ff_rack")
+            f_rk = st.selectbox("Rack de Destino:", rack_list, key="ff_rack")
             
-            f_tp = st.selectbox("Tipo de equipo:", ["Todos", "SWITCH", "PATCH PANEL"], key="ff_tipo")
+            f_tp = st.selectbox("Tipo de Conexión:", ["Todos", "SWITCH", "PATCH PANEL"], key="ff_tipo")
         with col_r2:
             # Lista de identificadores dinámica según rack y tipo usando los catálogos
             if f_tp == "SWITCH":
@@ -226,7 +234,7 @@ with col_f2:
                 # Asegurar que todos sean strings para evitar errores de ordenamiento
                 id_list = ["Todos"] + sorted(list(set([str(x) for x in all_ids if pd.notna(x)])))
                 
-            f_id = st.selectbox("Identificador/Equipo:", id_list, key="ff_id")
+            f_id = st.selectbox("Equipo de Destino:", id_list, key="ff_id")
             f_dp = st.selectbox("Dependencia:", ["Todos", "CM", "FN", "TI"], key="ff_dep")
 
         # Aplicar filtros de forma acumulativa
@@ -262,9 +270,9 @@ if clicked_map2:
             if closest['dist'] < 400:
                 st.toast(f"🕒 Eliminado: {closest['identificador']}", icon="🗑️")
                 st.warning(f"📜 **Historial de Eliminación:**\n\n"
+                           f"- **Nomenclatura:** {closest.get('nomenclatura', 'N/A')}\n"
                            f"- **Equipo:** {closest['identificador']}\n"
                            f"- **Rack:** {closest['rack'] if closest['rack'] else 'N/A'}\n"
-                           f"- **MAC:** {closest['mac'] if closest['mac'] else 'N/A'}\n"
                            f"- **Eliminado el:** {closest['fecha_hora']}\n"
                            f"- **IP de Usuario:** {closest.get('ip', 'Desconocida')}")
             else:
@@ -275,14 +283,15 @@ if clicked_map2:
             df_f['dist'] = (df_f['x'] - cx)**2 + (df_f['y'] - cy)**2
             closest = df_f.loc[df_f['dist'].idxmin()]
             if closest['dist'] < 400: # Radio de ~20px
-                st.toast(f"📍 {closest['rack']} | {closest['tipo']}: {closest['identificador']}", icon="ℹ️")
-                st.info(f"🔍 **Detalles del punto seleccionado:**\n\n"
-                        f"- **Rack:** {closest['rack'] if closest['rack'] else 'N/A'}\n"
-                        f"- **Tipo:** {closest['tipo'] if closest['tipo'] else 'N/A'}\n"
-                        f"- **Equipo:** {closest['identificador'] if closest['identificador'] else 'N/A'}\n"
-                        f"- **MAC:** {closest['mac'] if closest['mac'] else 'N/A'}\n"
+                st.toast(f"📍 Pto. Red en {closest['lugar']}", icon="ℹ️")
+                st.info(f"🔍 **Detalles de Conexión del Punto:**\n\n"
+                        f"- **Nomenclatura:** {closest.get('nomenclatura', 'N/A')}\n"
+                        f"- **Rack de Destino:** {closest['rack'] if closest['rack'] else 'N/A'}\n"
+                        f"- **Tipo de Conexión:** {closest['tipo'] if closest['tipo'] else 'N/A'}\n"
+                        f"- **Equipo en Rack:** {closest['identificador'] if closest['identificador'] else 'N/A'}\n"
+                        f"- **Puerto en Rack:** {closest['puerto'] if closest['puerto'] else 'N/A'}\n"
                         f"- **Dependencia:** {closest['dependencia'] if closest['dependencia'] else 'N/A'}\n"
-                        f"- **Puerto:** {closest['puerto'] if closest['puerto'] else 'N/A'}")
+                        f"- **Ubicación Física:** {closest['lugar'] if closest['lugar'] else 'N/A'}")
             else:
                 st.warning("No hay ningún punto cerca de donde hiciste clic.")
 
@@ -294,10 +303,10 @@ if len(df_f) > 0:
             c1, c2, c3 = st.columns([6,1,1])
             with c1:
                 if row['rack']:
-                    st.write(f"**{row['rack']}** | {row['tipo']}: {row['identificador']} | P:{row['puerto']} | {row['dependencia']} | {row['lugar']}")
+                    st.write(f"🏠 **{row['nomenclatura'] if row.get('nomenclatura') else row['lugar']}** | 🔌 Rack: {row['rack']} | Eqp: {row['identificador']} | P:{row['puerto']} | {row['dependencia']}")
                 else:
-                    st.write(f"**{row['dependencia']}** | {row['lugar']}")
-                st.caption(f"Status: {colores_a_nombres.get(row['color'], '??')}")
+                    st.write(f"🚩 **{row['nomenclatura'] if row.get('nomenclatura') else row['dependencia']}** | {row['lugar']}")
+                st.caption(f"Estado del Punto: {colores_a_nombres.get(row['color'], '??')}")
             with c2:
                 if st.button("✏️", key=f"e_{idx}"):
                     st.session_state[f"ed_{idx}"] = True
@@ -327,26 +336,27 @@ if len(df_f) > 0:
                     st.markdown(f"### ✏️ Editando: {row['rack']} - {row['identificador']}")
                     
                     # Selector de estado reactivo
-                    e_estado = st.selectbox("Nuevo Estado:", list(colores_a_nombres.values()), 
+                    e_estado = st.selectbox("Estado del Punto de Red:", list(colores_a_nombres.values()), 
                                            index=list(colores_a_nombres.keys()).index(row['color']) if row['color'] in colores_a_nombres else 0,
                                            key=f"edit_status_sel_{idx}")
                     e_color = [c for c, n in colores_a_nombres.items() if n == e_estado][0]
                     e_comp = "VERDE" in e_estado or "ROJO" in e_estado
-
+ 
                     with st.form(f"f_edit_{idx}"):
+                        e_nom = st.text_input("Nomenclatura / Nombre:", value=row.get('nomenclatura', ''))
                         if e_comp:
-                            st.markdown("**Actualizar Datos Técnicos**")
+                            st.markdown("**Actualizar Conexión al Rack**")
                             col_e1, col_e2 = st.columns(2)
                             with col_e1:
-                                e_rack = st.selectbox("Rack:", cat_rack["rack"], index=list(cat_rack["rack"]).index(row['rack']) if row['rack'] in list(cat_rack["rack"]) else 0)
-                                e_tipo = st.selectbox("Tipo:", ["SWITCH", "PATCH PANEL"], index=0 if row['tipo'] == "SWITCH" else 1)
+                                e_rack = st.selectbox("Rack de Destino:", cat_rack["rack"], index=list(cat_rack["rack"]).index(row['rack']) if row['rack'] in list(cat_rack["rack"]) else 0)
+                                e_tipo = st.selectbox("Tipo de Conexión:", ["SWITCH", "PATCH PANEL"], index=0 if row['tipo'] == "SWITCH" else 1)
                             with col_e2:
                                 if e_tipo == "SWITCH":
                                     e_l_ids = cat_switch[cat_switch["rack"] == e_rack]["switch"].tolist()
                                 else:
                                     e_l_ids = cat_patch[cat_patch["rack"] == e_rack]["patch_panel"].tolist()
-                                e_id = st.selectbox("Equipo:", e_l_ids if e_l_ids else ["(No hay)"])
-                                e_port = st.text_input("Puerto:", value=row['puerto'])
+                                e_id = st.selectbox("Equipo de Destino:", e_l_ids if e_l_ids else ["(No hay)"])
+                                e_port = st.text_input("Puerto en Rack:", value=row['puerto'])
                                 e_mac = row.get('mac', '') # Campo MAC oculto para edición
                             
                             st.markdown("---")
@@ -368,8 +378,18 @@ if len(df_f) > 0:
                         col_btns1, col_btns2 = st.columns(2)
                         with col_btns1:
                             if st.form_submit_button("💾 Actualizar Cambios", use_container_width=True):
-                                df.loc[idx, ["rack","tipo","identificador","puerto","dependencia","lugar","color","mac"]] = [e_rack, e_tipo, e_id, e_port, e_dep, e_place, e_color, e_mac]
-                                df.to_csv(CSV_FILE, index=False)
+                                # Validar Nomenclatura Única (excluyendo a sí mismo por el índice)
+                                nom_en_otros = e_nom in df.drop(idx)["nomenclatura"].astype(str).values
+                                
+                                if not e_nom:
+                                    st.error("❌ El punto debe tener una nomenclatura.")
+                                elif nom_en_otros:
+                                    st.error(f"❌ La nomenclatura '**{e_nom}**' ya está en uso por otro punto.")
+                                elif e_comp and not e_port.isnumeric():
+                                    st.error("❌ El puerto debe ser un número.")
+                                else:
+                                    df.loc[idx, ["rack","tipo","identificador","puerto","dependencia","lugar","color","mac","nomenclatura"]] = [e_rack, e_tipo, e_id, e_port, e_dep, e_place, e_color, e_mac, e_nom]
+                                    df.to_csv(CSV_FILE, index=False)
                                 st.session_state[f"ed_{idx}"] = False
                                 st.success("✅ Cambios guardados.")
                                 st.rerun()
