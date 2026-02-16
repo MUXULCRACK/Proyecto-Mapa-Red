@@ -3,6 +3,7 @@ from streamlit_image_coordinates import streamlit_image_coordinates
 from PIL import Image, ImageDraw
 import pandas as pd
 import os
+from datetime import datetime
 
 # ===========================================
 # CONFIGURACIÓN INICIAL
@@ -11,6 +12,7 @@ st.set_page_config(layout="wide")
 st.title("Mapa Interactivo de Red – Empresa")
 
 CSV_FILE = "network_points.csv"
+DELETED_CSV_FILE = "deleted_points.csv"
 IMAGE_FILE = "croquis.png"
 
 CAT_RACK = "catalogo_racks.csv"
@@ -18,20 +20,13 @@ CAT_SWITCH = "catalogo_switch.csv"
 CAT_PATCH = "catalogo_patch.csv"
 CAT_LUGAR = "catalogo_lugares.csv"
 
-# ===========================================
-# CREAR ARCHIVOS SI NO EXISTEN O REPARAR SI ESTÁN CORRUPTOS
-# ===========================================
 def create_or_fix_csv(filename, columns):
-    """Crea o repara un archivo CSV con las columnas especificadas"""
     try:
-        # Intentar leer el archivo
         df = pd.read_csv(filename)
-        # Verificar que tenga las columnas correctas
         if list(df.columns) != columns:
             raise ValueError("Columnas incorrectas")
         return df
     except (FileNotFoundError, pd.errors.EmptyDataError, ValueError):
-        # Si no existe, está vacío o tiene columnas incorrectas, crearlo
         df = pd.DataFrame(columns=columns)
         df.to_csv(filename, index=False)
         return df
@@ -39,28 +34,16 @@ def create_or_fix_csv(filename, columns):
 # ===========================================
 # CARGAR DATOS
 # ===========================================
-df = create_or_fix_csv(CSV_FILE, [
-    "x","y","tipo","identificador","color",
-    "rack","puerto","dependencia","lugar"
-])
+df = create_or_fix_csv(CSV_FILE, ["x","y","tipo","identificador","color","rack","puerto","dependencia","lugar","mac"])
+df_deleted = create_or_fix_csv(DELETED_CSV_FILE, ["x","y","tipo","identificador","color","rack","puerto","dependencia","lugar","mac","fecha_hora","ip"])
 
-# Eliminar duplicados existentes en el archivo
-# (un punto se considera duplicado si tiene el mismo rack, tipo, identificador y puerto)
-original_count = len(df)
 df = df.drop_duplicates(subset=["rack", "tipo", "identificador", "puerto"], keep="first")
-if len(df) < original_count:
-    df.to_csv(CSV_FILE, index=False)
-    duplicados_eliminados = original_count - len(df)
-    st.sidebar.success(f"🧹 Se eliminaron {duplicados_eliminados} punto(s) duplicado(s) del archivo.")
 
 cat_rack = create_or_fix_csv(CAT_RACK, ["rack"])
 cat_switch = create_or_fix_csv(CAT_SWITCH, ["rack", "switch"])
 cat_patch = create_or_fix_csv(CAT_PATCH, ["rack", "patch_panel"])
 cat_lugar = create_or_fix_csv(CAT_LUGAR, ["lugar"])
 
-# ===========================================
-# CARGAR IMAGEN
-# ===========================================
 try:
     base_img = Image.open(IMAGE_FILE)
 except:
@@ -68,339 +51,331 @@ except:
     st.stop()
 
 # ===========================================
-# AGREGAR RACK
+# SIDEBAR
 # ===========================================
-st.sidebar.header("Catálogo de Equipos")
+st.sidebar.header("Opciones")
+show_history = st.sidebar.checkbox("Ver Historial de Eliminados 🕒", value=False)
 
+st.sidebar.markdown("---")
 st.sidebar.subheader("➕ Agregar Rack")
 new_rack = st.sidebar.text_input("Nombre del Rack")
-
 if st.sidebar.button("Guardar Rack"):
-    if new_rack.strip() != "":
-        if new_rack not in cat_rack["rack"].values:
-            cat_rack.loc[len(cat_rack)] = [new_rack]
-            cat_rack.to_csv(CAT_RACK, index=False)
-            st.sidebar.success("Rack agregado.")
-            st.rerun()
-        else:
-            st.sidebar.error("Ese rack ya existe.")
+    if new_rack.strip() and new_rack not in cat_rack["rack"].values:
+        cat_rack.loc[len(cat_rack)] = [new_rack]
+        cat_rack.to_csv(CAT_RACK, index=False)
+        st.sidebar.success("Rack agregado.")
+        st.rerun()
 
-# ===========================================
-# AGREGAR SWITCH
-# ===========================================
 st.sidebar.subheader("➕ Agregar Switch")
-
 if len(cat_rack) > 0:
-    rack_sw = st.sidebar.selectbox("Rack:", cat_rack["rack"])
-    nombre_sw = st.sidebar.text_input("Nombre del Switch")
-
+    rack_sw = st.sidebar.selectbox("Rack:", cat_rack["rack"], key="sb_rack_sw")
+    nombre_sw = st.sidebar.text_input("Nombre del Switch", key="sb_name_sw")
     if st.sidebar.button("Guardar Switch"):
-        if nombre_sw.strip() != "":
-            if not nombre_sw.isnumeric():
-                cat_switch.loc[len(cat_switch)] = [rack_sw, nombre_sw]
-                cat_switch.to_csv(CAT_SWITCH, index=False)
-                st.sidebar.success("Switch agregado.")
-                st.rerun()
-            else:
-                st.sidebar.error("Debe contener letras.")
+        if nombre_sw.strip():
+            cat_switch.loc[len(cat_switch)] = [rack_sw, nombre_sw]
+            cat_switch.to_csv(CAT_SWITCH, index=False)
+            st.sidebar.success("✅ Switch agregado.")
+            st.rerun()
 
-# ===========================================
-# AGREGAR PATCH PANEL
-# ===========================================
 st.sidebar.subheader("➕ Agregar Patch Panel")
-
 if len(cat_rack) > 0:
-    rack_pp = st.sidebar.selectbox("Rack para Patch:", cat_rack["rack"])
-    num_pp = st.sidebar.text_input("Número Patch Panel")
-
+    rack_pp = st.sidebar.selectbox("Rack:", cat_rack["rack"], key="sb_rack_pp")
+    nombre_pp = st.sidebar.text_input("Nombre del Patch Panel", key="sb_name_pp")
     if st.sidebar.button("Guardar Patch Panel"):
-        if num_pp.isnumeric():
-            cat_patch.loc[len(cat_patch)] = [rack_pp, num_pp]
+        if nombre_pp.strip():
+            cat_patch.loc[len(cat_patch)] = [rack_pp, nombre_pp]
             cat_patch.to_csv(CAT_PATCH, index=False)
-            st.sidebar.success("Patch Panel agregado.")
+            st.sidebar.success("✅ Patch Panel agregado.")
             st.rerun()
-        else:
-            st.sidebar.error("Debe ser numérico.")
 
-# ===========================================
-# AGREGAR LUGAR
-# ===========================================
 st.sidebar.subheader("➕ Agregar Lugar")
-new_lugar = st.sidebar.text_input("Nombre del Lugar (ej: Oficina 101)")
-
+new_lugar = st.sidebar.text_input("Nombre del Lugar", key="sb_new_lugar")
 if st.sidebar.button("Guardar Lugar"):
-    if new_lugar.strip() != "":
-        if new_lugar not in cat_lugar["lugar"].values:
-            cat_lugar.loc[len(cat_lugar)] = [new_lugar]
-            cat_lugar.to_csv(CAT_LUGAR, index=False)
-            st.sidebar.success("Lugar agregado.")
-            st.rerun()
-        else:
-            st.sidebar.error("Ese lugar ya existe.")
-
-# ===========================================
-# MOSTRAR MAPA Y CAPTURAR CLIC
-# ===========================================
-st.subheader("Agregar punto en el croquis")
-
-# Mostrar imagen interactiva completa usando altura explícita
-clicked = streamlit_image_coordinates(
-    base_img,
-    key="map_click",
-    height=int(base_img.size[1])  # Altura original: 1200px para imagen completa
-)
-
-if clicked:
-
-    st.success(f"X={clicked['x']}  Y={clicked['y']}")
-
-    if len(cat_rack) == 0:
-        st.warning("Primero debes crear un Rack.")
-        st.stop()
-
-    rack_sel = st.selectbox("Rack:", cat_rack["rack"])
-    tipo = st.selectbox("Tipo:", ["SWITCH", "PATCH PANEL"])
-
-    if tipo == "SWITCH":
-        lista = cat_switch[cat_switch["rack"] == rack_sel]["switch"]
-        if len(lista) == 0:
-            st.warning("No hay switches en este rack.")
-            st.stop()
-        identificador = st.selectbox("Switch:", lista)
-
-    else:
-        lista = cat_patch[cat_patch["rack"] == rack_sel]["patch_panel"]
-        if len(lista) == 0:
-            st.warning("No hay patch panel en este rack.")
-            st.stop()
-        identificador = st.selectbox("Patch Panel:", lista)
-
-    dependencia = st.selectbox("Dependencia:", ["CM", "FN", "TI"])
-
-    estados = {
-        "Funcionando (VERDE)": "#00FF00",
-        "No sirve (ROJO)": "#FF0000",
-        "Sin identificar (AZUL)": "#0000FF",
-        "Pendiente (NARANJA)": "#FFA500"
-    }
-
-    estado = st.selectbox("Estado:", list(estados.keys()))
-    color = estados[estado]
-
-    puerto = st.text_input("Puerto")
-    
-    # Selector de lugar desde catálogo
-    if len(cat_lugar) > 0:
-        lugar = st.selectbox("Lugar:", cat_lugar["lugar"])
-    else:
-        st.warning("Primero debes agregar lugares en el catálogo.")
-        lugar = ""
-
-    if st.button("Guardar punto"):
-
-        duplicado = df[
-            (df["rack"] == rack_sel) &
-            (df["tipo"] == tipo) &
-            (df["identificador"] == identificador) &
-            (df["puerto"] == puerto)
-        ]
-
-        if not duplicado.empty:
-            st.error(f"⚠️ Ya hay un punto con ese puerto registrado:")
-            st.warning(f"**Rack:** {rack_sel} | **{tipo}:** {identificador} | **Puerto:** {puerto}")
-            st.info("💡 Verifica si quieres eliminar el punto existente en la sección de abajo antes de crear uno nuevo.")
-            st.stop()
-
-        new_row = {
-            "x": clicked["x"],
-            "y": clicked["y"],
-            "tipo": tipo,
-            "identificador": identificador,
-            "color": color,
-            "rack": rack_sel,
-            "puerto": puerto,
-            "dependencia": dependencia,
-            "lugar": lugar
-        }
-
-        df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
-        df.to_csv(CSV_FILE, index=False)
-
-        st.success("Punto guardado correctamente.")
+    if new_lugar.strip() and new_lugar not in cat_lugar["lugar"].values:
+        cat_lugar.loc[len(cat_lugar)] = [new_lugar]
+        cat_lugar.to_csv(CAT_LUGAR, index=False)
+        st.sidebar.success("Lugar agregado.")
         st.rerun()
 
 # ===========================================
-# FILTRAR Y VISUALIZAR PUNTOS
+# FUNCIONES
 # ===========================================
-st.subheader("📋 Visualizar Puntos")
-
-filtro_tipo = st.radio(
-    "Tipo de visualización:",
-    ["Ver todos", "Filtrar por Rack + Identificador", "Filtrar por Lugar"],
-    horizontal=True
-)
-
-df_filtrado = df.copy()
-
-if filtro_tipo == "Filtrar por Rack + Identificador":
-    col1, col2 = st.columns(2)
-    with col1:
-        if len(cat_rack) > 0:
-            rack_filtro = st.selectbox("Rack:", ["Todos"] + list(cat_rack["rack"]))
-        else:
-            st.warning("No hay racks disponibles")
-            rack_filtro = "Todos"
-    
-    with col2:
-        # Crear lista de identificadores disponibles
-        if rack_filtro != "Todos":
-            # Mostrar solo equipos del rack seleccionado
-            switches_disponibles = cat_switch[cat_switch["rack"] == rack_filtro]["switch"].tolist()
-            patches_disponibles = cat_patch[cat_patch["rack"] == rack_filtro]["patch_panel"].tolist()
-        else:
-            # Mostrar todos los equipos
-            switches_disponibles = cat_switch["switch"].tolist()
-            patches_disponibles = cat_patch["patch_panel"].tolist()
-        
-        # Combinar ambas listas con prefijos
-        identificadores = ["Todos"]
-        identificadores += [f"SW: {sw}" for sw in switches_disponibles]
-        identificadores += [f"PP: {pp}" for pp in patches_disponibles]
-        
-        identificador_filtro = st.selectbox("Identificador:", identificadores)
-    
-    if rack_filtro != "Todos":
-        df_filtrado = df_filtrado[df_filtrado["rack"] == rack_filtro]
-        
-        # Mostrar inventario de equipos del rack seleccionado
-        st.info(f"📦 **Equipos en {rack_filtro}:**")
-        col_sw, col_pp = st.columns(2)
-        
-        with col_sw:
-            switches_en_rack = cat_switch[cat_switch["rack"] == rack_filtro]
-            if len(switches_en_rack) > 0:
-                st.markdown("**🔌 Switches:**")
-                for _, sw in switches_en_rack.iterrows():
-                    st.markdown(f"- {sw['switch']}")
-            else:
-                st.markdown("**🔌 Switches:** _Ninguno_")
-        
-        with col_pp:
-            patches_en_rack = cat_patch[cat_patch["rack"] == rack_filtro]
-            if len(patches_en_rack) > 0:
-                st.markdown("**📊 Patch Panels:**")
-                for _, pp in patches_en_rack.iterrows():
-                    st.markdown(f"- Patch Panel {pp['patch_panel']}")
-            else:
-                st.markdown("**📊 Patch Panels:** _Ninguno_")
-    
-    if identificador_filtro != "Todos":
-        # Extraer el nombre real del identificador (después del prefijo "SW: " o "PP: ")
-        identificador_real = identificador_filtro.split(": ", 1)[1] if ": " in identificador_filtro else identificador_filtro
-        df_filtrado = df_filtrado[df_filtrado["identificador"] == identificador_real]
-
-elif filtro_tipo == "Filtrar por Lugar":
-    if len(cat_lugar) > 0:
-        lugar_filtro = st.selectbox("Lugar:", ["Todos"] + list(cat_lugar["lugar"]))
-        if lugar_filtro != "Todos":
-            df_filtrado = df_filtrado[df_filtrado["lugar"] == lugar_filtro]
+def draw_points(image, points_df, deleted_df=None, show_hist=False):
+    draw = ImageDraw.Draw(image)
+    if show_hist:
+        if deleted_df is not None and not deleted_df.empty:
+            last_3 = deleted_df.tail(3)
+            for _, row in last_3.iterrows():
+                x, y = int(row['x']), int(row['y'])
+                r = 12
+                draw.ellipse([x-r, y-r, x+r, y+r], fill="#808080", outline="white", width=2)
+                draw.line([x-5, y-5, x+5, y+5], fill="white", width=2)
+                draw.line([x+5, y-5, x-5, y+5], fill="white", width=2)
     else:
-        st.warning("No hay lugares en el catálogo")
+        for _, row in points_df.iterrows():
+            x, y, color = int(row['x']), int(row['y']), row['color']
+            r = 10
+            draw.ellipse([x-r, y-r, x+r, y+r], fill=color, outline="white", width=2)
+    return image
 
-# Filtro adicional por estado (color)
-st.markdown("---")
-st.subheader("🎨 Filtrar por Estado")
-
-estados_map = {
-    "Todos": None,
-    "Funcionando (VERDE)": "#00FF00",
-    "No sirve (ROJO)": "#FF0000",
-    "Sin identificar (AZUL)": "#0000FF",
-    "Pendiente (NARANJA)": "#FFA500"
+colores_a_nombres = {
+    "#00FF00": "🟢 Funcionando y ubicado (VERDE)",
+    "#FF0000": "🔴 No sirve y ubicado (ROJO)",
+    "#0000FF": "🔵 Sin identificar y funcionando (AZUL)",
+    "#FFA500": "🟠 Sin identificar y no se sabe funcionamiento (NARANJA)"
 }
 
-estado_filtro = st.selectbox("Estado:", list(estados_map.keys()))
-if estado_filtro != "Todos":
-    color_seleccionado = estados_map[estado_filtro]
-    df_filtrado = df_filtrado[df_filtrado["color"] == color_seleccionado]
+# Mapa 1: Selección de ubicación
+st.subheader("📍 Mapa 1: Selección de ubicación")
+st.write("Haz clic en este mapa limpio para capturar las coordenadas de un nuevo punto.")
 
-# ===========================================
-# DIBUJAR PUNTOS FILTRADOS EN EL MAPA
-# ===========================================
-st.subheader("Mapa con puntos filtrados")
+# Obtenemos el click (sin pasar height para mayor precisión de coordenadas originales)
+clicked = streamlit_image_coordinates(base_img, key="map_add")
 
-draw_img = base_img.copy()
-draw = ImageDraw.Draw(draw_img)
+if clicked:
+    # Solo guardar y recargar si es un click nuevo o diferente al anterior
+    if "last_click" not in st.session_state or st.session_state["last_click"] != clicked:
+        st.session_state["last_click"] = clicked
+        st.rerun()
+if "last_click" in st.session_state:
+    c_data = st.session_state["last_click"]
+    # Contenedor principal para el formulario de creación
+    with st.container(border=True):
+        st.subheader("➕ Agregar Nuevo Punto")
+        st.info(f"📍 Coordenadas: X={c_data['x']}, Y={c_data['y']}")
+        
+        # Selector de estado (debe estar fuera del st.form para ser reactivo)
+        estado_sel = st.selectbox("Estado del equipo:", list(colores_a_nombres.values()), key="new_point_status")
+        color_sel = [c for c, n in colores_a_nombres.items() if n == estado_sel][0]
+        is_completo = "VERDE" in estado_sel or "ROJO" in estado_sel
 
-valid_df = df_filtrado.dropna(subset=["x", "y"])
+        with st.form("crear_punto"):
+            if is_completo:
+                st.markdown("**Información Técnica**")
+                col_c1, col_c2 = st.columns(2)
+                with col_c1:
+                    r_sel = st.selectbox("Rack:", cat_rack["rack"])
+                    t_sel = st.selectbox("Tipo de equipo:", ["SWITCH", "PATCH PANEL"])
+                with col_c2:
+                    if t_sel == "SWITCH":
+                        l_ids = cat_switch[cat_switch["rack"] == r_sel]["switch"].tolist()
+                    else:
+                        l_ids = cat_patch[cat_patch["rack"] == r_sel]["patch_panel"].tolist()
+                    id_sel = st.selectbox("Seleccionar Equipo:", l_ids if l_ids else ["(No hay)"])
+                    port_sel = st.text_input("Número de Puerto:")
+                    mac_sel = "" # Campo MAC oculto por solicitud del usuario
+                
+                st.markdown("---")
+                st.markdown("**Ubicación y Responsable**")
+                col_c3, col_c4 = st.columns(2)
+                with col_c3:
+                    dep_sel = st.selectbox("Dependencia:", ["CM", "FN", "TI"])
+                with col_c4:
+                    place_sel = st.selectbox("Lugar:", cat_lugar["lugar"])
+            else:
+                r_sel, t_sel, id_sel, port_sel, mac_sel = "", "", "", "", ""
+                st.markdown("**Ubicación y Responsable**")
+                col_c1, col_c2 = st.columns(2)
+                with col_c1:
+                    dep_sel = st.selectbox("Dependencia:", ["CM", "FN", "TI"])
+                with col_c2:
+                    place_sel = st.selectbox("Lugar:", cat_lugar["lugar"])
 
-for _, row in valid_df.iterrows():
-    cx, cy = int(row["x"]), int(row["y"])
-    r = 10
-    draw.ellipse(
-        (cx-r, cy-r, cx+r, cy+r),
-        fill=row["color"],
-        outline="black"
-    )
-
-st.image(draw_img)  # Misma configuración que imagen interactiva
-
-# ===========================================
-# LISTA DE PUNTOS FILTRADOS
-# ===========================================
-st.subheader("📋 Lista de Puntos")
-
-# Mostrar resultados con acciones integradas
-if len(df_filtrado) > 0:
-    st.success(f"📍 Se encontraron {len(df_filtrado)} punto(s)")
-    
-    # Mostrar cada punto con botones de acción
-    for idx, row in df_filtrado.iterrows():
-        with st.container():
-            col1, col2, col3 = st.columns([6, 1, 1])
-            
-            with col1:
-                # Información del punto
-                lugar_info = f" | 📍 {row['lugar']}" if pd.notna(row.get('lugar')) and row.get('lugar') != '' else ""
-                st.markdown(f"""
-                **{row['rack']}** | {row['tipo']}: **{row['identificador']}** | Puerto: **{row['puerto']}** | 
-                {row['dependencia']}{lugar_info}
-                """)
-            
-            with col2:
-                # Botón de editar
-                if st.button("✏️ Editar", key=f"edit_{idx}", use_container_width=True):
-                    st.session_state[f"editing_{idx}"] = True
+            if st.form_submit_button("✅ Guardar Punto", use_container_width=True):
+                if is_completo and (not r_sel or not id_sel or not port_sel or id_sel == "(No hay)"):
+                    st.error("❌ Por favor completa todos los campos técnicos.")
+                elif is_completo and not port_sel.isnumeric():
+                    st.error("❌ El puerto debe ser un número.")
+                else:
+                    new_row = {"x": c_data["x"], "y": c_data["y"], "tipo": t_sel, "identificador": id_sel, "color": color_sel, "rack": r_sel, "puerto": port_sel, "dependencia": dep_sel, "lugar": place_sel, "mac": mac_sel}
+                    df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
+                    df.to_csv(CSV_FILE, index=False)
+                    del st.session_state["last_click"]
+                    st.success("✅ ¡Punto guardado con éxito!")
                     st.rerun()
+
+st.markdown("---")
+
+# Mapa 2: Visualización con Filtros
+st.subheader("📋 Mapa 2: Visualización y Filtros")
+st.write("Usa este mapa para buscar equipos específicos. Aquí es donde se aplican los filtros y se activa el historial.")
+
+col_f1, col_f2, col_f3 = st.columns(3)
+with col_f1:
+    filtro_modo = st.radio("Filtro:", ["Todos", "Rack y Equipo", "Lugar", "Dependencia"], horizontal=True)
+with col_f2:
+    df_f = df.copy()
+    if filtro_modo == "Rack y Equipo":
+        st.markdown("**Búsqueda técnica combinada:**")
+        col_r1, col_r2 = st.columns(2)
+        with col_r1:
+            rack_list = ["Todos"] + list(cat_rack["rack"])
+            f_rk = st.selectbox("Rack:", rack_list, key="ff_rack")
             
-            with col3:
-                # Botón de eliminar
-                if st.button("🗑️", key=f"delete_{idx}", use_container_width=True, type="secondary"):
+            f_tp = st.selectbox("Tipo de equipo:", ["Todos", "SWITCH", "PATCH PANEL"], key="ff_tipo")
+        with col_r2:
+            # Lista de identificadores dinámica según rack y tipo usando los catálogos
+            if f_tp == "SWITCH":
+                temp_ids = cat_switch[cat_switch["rack"] == f_rk]["switch"] if f_rk != "Todos" else cat_switch["switch"]
+                id_list = ["Todos"] + sorted(list(temp_ids.unique()))
+            elif f_tp == "PATCH PANEL":
+                temp_ids = cat_patch[cat_patch["rack"] == f_rk]["patch_panel"] if f_rk != "Todos" else cat_patch["patch_panel"]
+                id_list = ["Todos"] + sorted(list(temp_ids.unique()))
+            else:
+                all_ids = list(cat_switch["switch"].unique()) + list(cat_patch["patch_panel"].unique())
+                # Asegurar que todos sean strings para evitar errores de ordenamiento
+                id_list = ["Todos"] + sorted(list(set([str(x) for x in all_ids if pd.notna(x)])))
+                
+            f_id = st.selectbox("Identificador/Equipo:", id_list, key="ff_id")
+            f_dp = st.selectbox("Dependencia:", ["Todos", "CM", "FN", "TI"], key="ff_dep")
+
+        # Aplicar filtros de forma acumulativa
+        if f_rk != "Todos": df_f = df_f[df_f["rack"] == f_rk]
+        if f_tp != "Todos": df_f = df_f[df_f["tipo"] == f_tp]
+        if f_id != "Todos": df_f = df_f[df_f["identificador"] == f_id]
+        if f_dp != "Todos": df_f = df_f[df_f["dependencia"] == f_dp]
+
+    elif filtro_modo == "Lugar":
+        lf = st.selectbox("Filtrar por Lugar:", ["Todos"] + list(cat_lugar["lugar"]))
+        if lf != "Todos": df_f = df_f[df_f["lugar"] == lf]
+    elif filtro_modo == "Dependencia":
+        df_df = st.selectbox("Filtrar por Dependencia:", ["Todos", "CM", "FN", "TI"])
+        if df_df != "Todos": df_f = df_f[df_f["dependencia"] == df_df]
+with col_f3:
+    sf = st.selectbox("Estado:", ["Todos"] + list(colores_a_nombres.values()))
+    if sf != "Todos":
+        cf = [c for c, n in colores_a_nombres.items() if n == sf][0]
+        df_f = df_f[df_f["color"] == cf]
+
+img_mapa2 = draw_points(base_img.copy(), df_f, df_deleted, show_history)
+clicked_map2 = streamlit_image_coordinates(img_mapa2, key="map_view")
+
+if clicked_map2:
+    cx, cy = clicked_map2["x"], clicked_map2["y"]
+    
+    if show_history:
+        # Modo HISTORIAL: Buscar en los últimos 3 eliminados
+        if df_deleted is not None and not df_deleted.empty:
+            last_3 = df_deleted.tail(3).copy()
+            last_3['dist'] = (last_3['x'] - cx)**2 + (last_3['y'] - cy)**2
+            closest = last_3.loc[last_3['dist'].idxmin()]
+            if closest['dist'] < 400:
+                st.toast(f"🕒 Eliminado: {closest['identificador']}", icon="🗑️")
+                st.warning(f"📜 **Historial de Eliminación:**\n\n"
+                           f"- **Equipo:** {closest['identificador']}\n"
+                           f"- **Rack:** {closest['rack'] if closest['rack'] else 'N/A'}\n"
+                           f"- **MAC:** {closest['mac'] if closest['mac'] else 'N/A'}\n"
+                           f"- **Eliminado el:** {closest['fecha_hora']}\n"
+                           f"- **IP de Usuario:** {closest.get('ip', 'Desconocida')}")
+            else:
+                st.warning("Haz clic cerca de un punto gris para ver su historial.")
+    else:
+        # Modo NORMAL: Buscar en puntos activos filtrados
+        if not df_f.empty:
+            df_f['dist'] = (df_f['x'] - cx)**2 + (df_f['y'] - cy)**2
+            closest = df_f.loc[df_f['dist'].idxmin()]
+            if closest['dist'] < 400: # Radio de ~20px
+                st.toast(f"📍 {closest['rack']} | {closest['tipo']}: {closest['identificador']}", icon="ℹ️")
+                st.info(f"🔍 **Detalles del punto seleccionado:**\n\n"
+                        f"- **Rack:** {closest['rack'] if closest['rack'] else 'N/A'}\n"
+                        f"- **Tipo:** {closest['tipo'] if closest['tipo'] else 'N/A'}\n"
+                        f"- **Equipo:** {closest['identificador'] if closest['identificador'] else 'N/A'}\n"
+                        f"- **MAC:** {closest['mac'] if closest['mac'] else 'N/A'}\n"
+                        f"- **Dependencia:** {closest['dependencia'] if closest['dependencia'] else 'N/A'}\n"
+                        f"- **Puerto:** {closest['puerto'] if closest['puerto'] else 'N/A'}")
+            else:
+                st.warning("No hay ningún punto cerca de donde hiciste clic.")
+
+# Lista
+st.subheader("📄 Listado de puntos")
+if len(df_f) > 0:
+    for idx, row in df_f.iterrows():
+        with st.container():
+            c1, c2, c3 = st.columns([6,1,1])
+            with c1:
+                if row['rack']:
+                    st.write(f"**{row['rack']}** | {row['tipo']}: {row['identificador']} | P:{row['puerto']} | {row['dependencia']} | {row['lugar']}")
+                else:
+                    st.write(f"**{row['dependencia']}** | {row['lugar']}")
+                st.caption(f"Status: {colores_a_nombres.get(row['color'], '??')}")
+            with c2:
+                if st.button("✏️", key=f"e_{idx}"):
+                    st.session_state[f"ed_{idx}"] = True
+                    st.rerun()
+            with c3:
+                if st.button("🗑️", key=f"d_{idx}"):
+                    # Intentar obtener IP del usuario
+                    user_ip = "Local"
+                    try:
+                        # En Streamlit >= 1.37 se puede intentar obtener de los headers
+                        headers = st.context.headers
+                        user_ip = headers.get("X-Forwarded-For", "Local").split(",")[0]
+                    except:
+                        pass
+                    
+                    to_d = df.loc[[idx]].copy()
+                    to_d["fecha_hora"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    to_d["ip"] = user_ip
+                    
+                    to_d.to_csv(DELETED_CSV_FILE, mode='a', header=not os.path.exists(DELETED_CSV_FILE), index=False)
                     df = df.drop(idx)
                     df.to_csv(CSV_FILE, index=False)
-                    st.success("Punto eliminado.")
                     st.rerun()
             
-            # Mostrar editor si está en modo edición
-            if st.session_state.get(f"editing_{idx}", False):
-                with st.expander("✏️ Editar punto", expanded=True):
-                    new_color = st.color_picker("Color:", row["color"], key=f"color_{idx}")
+            if st.session_state.get(f"ed_{idx}", False):
+                with st.container(border=True):
+                    st.markdown(f"### ✏️ Editando: {row['rack']} - {row['identificador']}")
                     
-                    col_save, col_cancel = st.columns(2)
-                    with col_save:
-                        if st.button("💾 Guardar", key=f"save_{idx}", use_container_width=True, type="primary"):
-                            df.loc[idx, "color"] = new_color
-                            df.to_csv(CSV_FILE, index=False)
-                            st.session_state[f"editing_{idx}"] = False
-                            st.success("Cambios guardados.")
-                            st.rerun()
-                    
-                    with col_cancel:
-                        if st.button("❌ Cancelar", key=f"cancel_{idx}", use_container_width=True):
-                            st.session_state[f"editing_{idx}"] = False
-                            st.rerun()
-            
-            st.markdown("---")
-    
+                    # Selector de estado reactivo
+                    e_estado = st.selectbox("Nuevo Estado:", list(colores_a_nombres.values()), 
+                                           index=list(colores_a_nombres.keys()).index(row['color']) if row['color'] in colores_a_nombres else 0,
+                                           key=f"edit_status_sel_{idx}")
+                    e_color = [c for c, n in colores_a_nombres.items() if n == e_estado][0]
+                    e_comp = "VERDE" in e_estado or "ROJO" in e_estado
+
+                    with st.form(f"f_edit_{idx}"):
+                        if e_comp:
+                            st.markdown("**Actualizar Datos Técnicos**")
+                            col_e1, col_e2 = st.columns(2)
+                            with col_e1:
+                                e_rack = st.selectbox("Rack:", cat_rack["rack"], index=list(cat_rack["rack"]).index(row['rack']) if row['rack'] in list(cat_rack["rack"]) else 0)
+                                e_tipo = st.selectbox("Tipo:", ["SWITCH", "PATCH PANEL"], index=0 if row['tipo'] == "SWITCH" else 1)
+                            with col_e2:
+                                if e_tipo == "SWITCH":
+                                    e_l_ids = cat_switch[cat_switch["rack"] == e_rack]["switch"].tolist()
+                                else:
+                                    e_l_ids = cat_patch[cat_patch["rack"] == e_rack]["patch_panel"].tolist()
+                                e_id = st.selectbox("Equipo:", e_l_ids if e_l_ids else ["(No hay)"])
+                                e_port = st.text_input("Puerto:", value=row['puerto'])
+                                e_mac = row.get('mac', '') # Campo MAC oculto para edición
+                            
+                            st.markdown("---")
+                            st.markdown("**Actualizar Ubicación**")
+                            col_e3, col_e4 = st.columns(2)
+                            with col_e3:
+                                e_dep = st.selectbox("Dependencia:", ["CM", "FN", "TI"], index=["CM", "FN", "TI"].index(row['dependencia']) if row['dependencia'] in ["CM", "FN", "TI"] else 0)
+                            with col_e4:
+                                e_place = st.selectbox("Lugar:", cat_lugar["lugar"], index=list(cat_lugar["lugar"]).index(row['lugar']) if row['lugar'] in list(cat_lugar["lugar"]) else 0)
+                        else:
+                            e_rack, e_tipo, e_id, e_port, e_mac = "", "", "", "", ""
+                            st.markdown("**Actualizar Ubicación**")
+                            col_e1, col_e2 = st.columns(2)
+                            with col_e1:
+                                e_dep = st.selectbox("Dependencia:", ["CM", "FN", "TI"], index=["CM", "FN", "TI"].index(row['dependencia']) if row['dependencia'] in ["CM", "FN", "TI"] else 0)
+                            with col_e2:
+                                e_place = st.selectbox("Lugar:", cat_lugar["lugar"], index=list(cat_lugar["lugar"]).index(row['lugar']) if row['lugar'] in list(cat_lugar["lugar"]) else 0)
+                        
+                        col_btns1, col_btns2 = st.columns(2)
+                        with col_btns1:
+                            if st.form_submit_button("💾 Actualizar Cambios", use_container_width=True):
+                                df.loc[idx, ["rack","tipo","identificador","puerto","dependencia","lugar","color","mac"]] = [e_rack, e_tipo, e_id, e_port, e_dep, e_place, e_color, e_mac]
+                                df.to_csv(CSV_FILE, index=False)
+                                st.session_state[f"ed_{idx}"] = False
+                                st.success("✅ Cambios guardados.")
+                                st.rerun()
+                        with col_btns2:
+                            if st.form_submit_button("❌ Cancelar", use_container_width=True):
+                                st.session_state[f"ed_{idx}"] = False
+                                st.rerun()
 else:
-    st.info("No se encontraron puntos con los filtros seleccionados")
+    st.info("No se encontraron puntos.")

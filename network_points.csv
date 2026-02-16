@@ -1,4 +1,2 @@
-x,y,tipo,identificador,color,rack,puerto,dependencia,lugar
-365,1058,SWITCH,SWA,#00FF00,RK1,10,TI,Sistemas
-542,1011,PATCH PANEL,2,#0000FF,RK1,22,FN,SALA DE JUNTAS
-490,1067,SWITCH,SWA,#00FF00,RK1,22,FN,SALA DE JUNTAS
+x,y,tipo,identificador,color,rack,puerto,dependencia,lugar,mac
+552,1067,SWITCH,SWA,#00FF00,RK1,10.0,TI,Sistemas,
