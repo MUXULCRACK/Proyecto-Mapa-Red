@@ -35,8 +35,8 @@ def create_or_fix_csv(filename, columns):
 # ===========================================
 # CARGAR DATOS
 # ===========================================
-df = create_or_fix_csv(CSV_FILE, ["x","y","tipo","identificador","color","rack","puerto","dependencia","lugar","mac","nomenclatura"])
-df_deleted = create_or_fix_csv(DELETED_CSV_FILE, ["x","y","tipo","identificador","color","rack","puerto","dependencia","lugar","mac","fecha_hora","ip","nomenclatura"])
+df = create_or_fix_csv(CSV_FILE, ["x","y","tipo","identificador","color","rack","puerto","dependencia","lugar","nomenclatura"])
+df_deleted = create_or_fix_csv(DELETED_CSV_FILE, ["x","y","tipo","identificador","color","rack","puerto","dependencia","lugar","fecha_hora","ip","nomenclatura"])
 
 df = df.drop_duplicates(subset=["x", "y"], keep="first")
 
@@ -181,7 +181,6 @@ if "last_click" in st.session_state:
                         l_ids = cat_patch[cat_patch["rack"] == r_sel]["patch_panel"].tolist()
                     id_sel = st.selectbox("Equipo de Destino:", l_ids if l_ids else ["(No hay)"])
                     port_sel = st.text_input("Puerto en el Equipo:")
-                    mac_sel = "" # Campo MAC oculto por solicitud del usuario
                 
                 st.markdown("---")
                 st.markdown("**Ubicación y Responsable**")
@@ -191,7 +190,7 @@ if "last_click" in st.session_state:
                 with col_c4:
                     place_sel = st.selectbox("Lugar:", cat_lugar["lugar"])
             else:
-                r_sel, t_sel, id_sel, port_sel, mac_sel = "", "", "", "", ""
+                r_sel, t_sel, id_sel, port_sel = "", "", "", ""
                 st.markdown("**Ubicación y Responsable**")
                 col_c1, col_c2 = st.columns(2)
                 with col_c1:
@@ -212,7 +211,7 @@ if "last_click" in st.session_state:
                 elif is_completo and not port_sel.isnumeric():
                     st.error("❌ El puerto debe ser un número.")
                 else:
-                    new_row = {"x": c_data["x"], "y": c_data["y"], "tipo": t_sel, "identificador": id_sel, "color": color_sel, "rack": r_sel, "puerto": port_sel, "dependencia": dep_sel, "lugar": place_sel, "mac": mac_sel, "nomenclatura": nom_sel}
+                    new_row = {"x": c_data["x"], "y": c_data["y"], "tipo": t_sel, "identificador": id_sel, "color": color_sel, "rack": r_sel, "puerto": port_sel, "dependencia": dep_sel, "lugar": place_sel, "nomenclatura": nom_sel}
                     df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
                     df.to_csv(CSV_FILE, index=False)
                     del st.session_state["last_click"]
@@ -296,21 +295,41 @@ if clicked_map2:
                 st.warning("Haz clic cerca de un punto gris para ver su historial.")
     else:
         # Modo NORMAL: Buscar en puntos activos filtrados
+        if "moving_idx" in st.session_state:
+            # EJECUTAR RE-UBICACIÓN
+            m_idx = st.session_state["moving_idx"]
+            df.loc[m_idx, ["x", "y"]] = [cx, cy]
+            df.to_csv(CSV_FILE, index=False)
+            st.success(f"✅ Punto '{df.loc[m_idx, 'nomenclatura']}' re-ubicado correctamente.")
+            del st.session_state["moving_idx"]
+            st.rerun()
+            
         if not df_f.empty:
             df_f['dist'] = (df_f['x'] - cx)**2 + (df_f['y'] - cy)**2
-            closest = df_f.loc[df_f['dist'].idxmin()]
+            closest_idx = df_f['dist'].idxmin()
+            closest = df_f.loc[closest_idx]
+            
             if closest['dist'] < 400: # Radio de ~20px
-                st.toast(f"📍 Pto. Red en {closest['lugar']}", icon="ℹ️")
-                st.info(f"🔍 **Detalles de Conexión del Punto:**\n\n"
-                        f"- **Nomenclatura:** {closest.get('nomenclatura', 'N/A')}\n"
-                        f"- **Rack de Destino:** {closest['rack'] if closest['rack'] else 'N/A'}\n"
-                        f"- **Tipo de Conexión:** {closest['tipo'] if closest['tipo'] else 'N/A'}\n"
-                        f"- **Equipo en Rack:** {closest['identificador'] if closest['identificador'] else 'N/A'}\n"
-                        f"- **Puerto en Rack:** {closest['puerto'] if closest['puerto'] else 'N/A'}\n"
-                        f"- **Dependencia:** {closest['dependencia'] if closest['dependencia'] else 'N/A'}\n"
-                        f"- **Ubicación Física:** {closest['lugar'] if closest['lugar'] else 'N/A'}")
+                st.toast(f"📍 Seleccionado: {closest['nomenclatura']}", icon="🎯")
+                with st.container(border=True):
+                    st.info(f"🔍 **Detalles del Punto:**\n\n"
+                            f"- **Nomenclatura:** {closest.get('nomenclatura', 'N/A')}\n"
+                            f"- **Estado:** {colores_a_nombres.get(closest['color'], 'Desconocido')}\n"
+                            f"- **Ubicación:** {closest['lugar']} | **Dependencia:** {closest['dependencia']}\n"
+                            f"- **Rack:** {closest['rack']} | **Tipo:** {closest['tipo']} | **Equipo:** {closest['identificador']} | **Puerto:** {closest['puerto']}")
+                    
+                    if st.button("🎯 Re-ubicar este punto", key=f"move_btn_{closest_idx}"):
+                        st.session_state["moving_idx"] = closest_idx
+                        st.toast("⚠️ Modo Re-ubicación: Haz clic en la nueva posición en el mapa.", icon="🗺️")
+                        st.rerun()
             else:
                 st.warning("No hay ningún punto cerca de donde hiciste clic.")
+
+if "moving_idx" in st.session_state:
+    st.warning("🚨 **MODO RE-UBICACIÓN ACTIVO**: Haz clic en cualquier parte del **Mapa 2** para mover el punto seleccionado.")
+    if st.button("❌ Cancelar Re-ubicación"):
+        del st.session_state["moving_idx"]
+        st.rerun()
 
 # Lista
 st.subheader("📄 Listado de puntos")
@@ -411,9 +430,9 @@ if len(df_f) > 0:
                                 elif e_tipo != "None" and e_port and not e_port.isnumeric():
                                     st.error("❌ El puerto debe ser un número.")
                                 else:
-                                    # Conservamos X, Y y MAC originales
-                                    old_x, old_y, old_mac = row['x'], row['y'], row.get('mac', '')
-                                    df.loc[idx, ["x","y","rack","tipo","identificador","puerto","dependencia","lugar","color","mac","nomenclatura"]] = [old_x, old_y, e_rack, e_tipo, e_id, e_port, e_dep, e_place, e_color, old_mac, e_nom]
+                                    # Conservamos X e Y originales
+                                    old_x, old_y = row['x'], row['y']
+                                    df.loc[idx, ["x","y","rack","tipo","identificador","puerto","dependencia","lugar","color","nomenclatura"]] = [old_x, old_y, e_rack, e_tipo, e_id, e_port, e_dep, e_place, e_color, e_nom]
                                     df.to_csv(CSV_FILE, index=False)
                                 st.session_state[f"ed_{idx}"] = False
                                 st.success("✅ Cambios guardados.")

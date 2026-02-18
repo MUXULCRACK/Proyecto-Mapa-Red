@@ -1,6 +1,2 @@
-x,y,tipo,identificador,color,rack,puerto,dependencia,lugar,mac,nomenclatura
-431,1054,,,#0000FF,,,TI,Sistemas,,TI-1
-411,1071,,,#0000FF,,,TI,Sistemas,,TI-2
-380,1076,,,#0000FF,,,TI,Sistemas,,TI-3
-372,1056,,,#0000FF,,,TI,Sistemas,,TI-4
-429,1062,,,#FFA500,,,TI,Sistemas,,TI-1A
+x,y,tipo,identificador,color,rack,puerto,dependencia,lugar,nomenclatura
+429,1050,SWITCH,SWA,#00FF00,RK1,10,CM,Sistemas,TI-1A
