@@ -19,6 +19,7 @@ CAT_RACK = "catalogo_racks.csv"
 CAT_SWITCH = "catalogo_switch.csv"
 CAT_PATCH = "catalogo_patch.csv"
 CAT_LUGAR = "catalogo_lugares.csv"
+CAT_DEPENDENCIA = "catalogo_dependencias.csv"
 
 def create_or_fix_csv(filename, columns):
     try:
@@ -43,6 +44,13 @@ cat_rack = create_or_fix_csv(CAT_RACK, ["rack"])
 cat_switch = create_or_fix_csv(CAT_SWITCH, ["rack", "switch"])
 cat_patch = create_or_fix_csv(CAT_PATCH, ["rack", "patch_panel"])
 cat_lugar = create_or_fix_csv(CAT_LUGAR, ["lugar"])
+cat_dependencia = create_or_fix_csv(CAT_DEPENDENCIA, ["dependencia"])
+
+# Asegurar que existan valores por defecto si está vacío
+if len(cat_dependencia) == 0:
+    for dep in ["CM", "FN", "TI"]:
+        cat_dependencia.loc[len(cat_dependencia)] = [dep]
+    cat_dependencia.to_csv(CAT_DEPENDENCIA, index=False)
 
 try:
     base_img = Image.open(IMAGE_FILE)
@@ -95,6 +103,15 @@ if st.sidebar.button("Guardar Lugar"):
         cat_lugar.loc[len(cat_lugar)] = [new_lugar]
         cat_lugar.to_csv(CAT_LUGAR, index=False)
         st.sidebar.success("Lugar agregado.")
+        st.rerun()
+
+st.sidebar.subheader("➕ Agregar Dependencia")
+new_dep = st.sidebar.text_input("Nombre de la Dependencia", key="sb_new_dep")
+if st.sidebar.button("Guardar Dependencia"):
+    if new_dep.strip() and new_dep not in cat_dependencia["dependencia"].values:
+        cat_dependencia.loc[len(cat_dependencia)] = [new_dep]
+        cat_dependencia.to_csv(CAT_DEPENDENCIA, index=False)
+        st.sidebar.success("Dependencia agregada.")
         st.rerun()
 
 # ===========================================
@@ -170,7 +187,7 @@ if "last_click" in st.session_state:
                 st.markdown("**Ubicación y Responsable**")
                 col_c3, col_c4 = st.columns(2)
                 with col_c3:
-                    dep_sel = st.selectbox("Dependencia:", ["CM", "FN", "TI"])
+                    dep_sel = st.selectbox("Dependencia:", cat_dependencia["dependencia"])
                 with col_c4:
                     place_sel = st.selectbox("Lugar:", cat_lugar["lugar"])
             else:
@@ -178,7 +195,7 @@ if "last_click" in st.session_state:
                 st.markdown("**Ubicación y Responsable**")
                 col_c1, col_c2 = st.columns(2)
                 with col_c1:
-                    dep_sel = st.selectbox("Dependencia:", ["CM", "FN", "TI"])
+                    dep_sel = st.selectbox("Dependencia:", cat_dependencia["dependencia"])
                 with col_c2:
                     place_sel = st.selectbox("Lugar:", cat_lugar["lugar"])
 
@@ -235,7 +252,7 @@ with col_f2:
                 id_list = ["Todos"] + sorted(list(set([str(x) for x in all_ids if pd.notna(x)])))
                 
             f_id = st.selectbox("Equipo de Destino:", id_list, key="ff_id")
-            f_dp = st.selectbox("Dependencia:", ["Todos", "CM", "FN", "TI"], key="ff_dep")
+            f_dp = st.selectbox("Dependencia:", ["Todos"] + list(cat_dependencia["dependencia"]), key="ff_dep")
 
         # Aplicar filtros de forma acumulativa
         if f_rk != "Todos": df_f = df_f[df_f["rack"] == f_rk]
@@ -247,7 +264,7 @@ with col_f2:
         lf = st.selectbox("Filtrar por Lugar:", ["Todos"] + list(cat_lugar["lugar"]))
         if lf != "Todos": df_f = df_f[df_f["lugar"] == lf]
     elif filtro_modo == "Dependencia":
-        df_df = st.selectbox("Filtrar por Dependencia:", ["Todos", "CM", "FN", "TI"])
+        df_df = st.selectbox("Filtrar por Dependencia:", ["Todos"] + list(cat_dependencia["dependencia"]))
         if df_df != "Todos": df_f = df_f[df_f["dependencia"] == df_df]
 with col_f3:
     sf = st.selectbox("Estado:", ["Todos"] + list(colores_a_nombres.values()))
@@ -344,36 +361,42 @@ if len(df_f) > 0:
  
                     with st.form(f"f_edit_{idx}"):
                         e_nom = st.text_input("Nomenclatura / Nombre:", value=row.get('nomenclatura', ''))
+                        
                         if e_comp:
-                            st.markdown("**Actualizar Conexión al Rack**")
+                            st.markdown("**Detalles de Conexión al Rack**")
                             col_e1, col_e2 = st.columns(2)
                             with col_e1:
-                                e_rack = st.selectbox("Rack de Destino:", cat_rack["rack"], index=list(cat_rack["rack"]).index(row['rack']) if row['rack'] in list(cat_rack["rack"]) else 0)
-                                e_tipo = st.selectbox("Tipo de Conexión:", ["SWITCH", "PATCH PANEL"], index=0 if row['tipo'] == "SWITCH" else 1)
+                                # Safely find index for rack
+                                r_list = list(cat_rack["rack"])
+                                r_idx = r_list.index(row['rack']) if row['rack'] in r_list else 0
+                                e_rack = st.selectbox("Rack de Destino:", r_list, index=r_idx)
+                                
+                                e_tipo = st.selectbox("Tipo de Conexión:", ["SWITCH", "PATCH PANEL"], 
+                                                    index=["SWITCH", "PATCH PANEL"].index(row['tipo']) if row['tipo'] in ["SWITCH", "PATCH PANEL"] else 0)
                             with col_e2:
                                 if e_tipo == "SWITCH":
                                     e_l_ids = cat_switch[cat_switch["rack"] == e_rack]["switch"].tolist()
-                                else:
+                                elif e_tipo == "PATCH PANEL":
                                     e_l_ids = cat_patch[cat_patch["rack"] == e_rack]["patch_panel"].tolist()
-                                e_id = st.selectbox("Equipo de Destino:", e_l_ids if e_l_ids else ["(No hay)"])
-                                e_port = st.text_input("Puerto en Rack:", value=row['puerto'])
-                                e_mac = row.get('mac', '') # Campo MAC oculto para edición
-                            
-                            st.markdown("---")
-                            st.markdown("**Actualizar Ubicación**")
-                            col_e3, col_e4 = st.columns(2)
-                            with col_e3:
-                                e_dep = st.selectbox("Dependencia:", ["CM", "FN", "TI"], index=["CM", "FN", "TI"].index(row['dependencia']) if row['dependencia'] in ["CM", "FN", "TI"] else 0)
-                            with col_e4:
-                                e_place = st.selectbox("Lugar:", cat_lugar["lugar"], index=list(cat_lugar["lugar"]).index(row['lugar']) if row['lugar'] in list(cat_lugar["lugar"]) else 0)
+                                else:
+                                    e_l_ids = []
+                                
+                                # Safely finding ID
+                                id_list = e_l_ids if e_l_ids else ["(No hay)"]
+                                id_idx = id_list.index(row['identificador']) if row['identificador'] in id_list else 0
+                                e_id = st.selectbox("Equipo de Destino:", id_list, index=id_idx)
+                                
+                                e_port = st.text_input("Puerto en el Equipo:", value=str(row['puerto']) if pd.notna(row['puerto']) else "")
                         else:
-                            e_rack, e_tipo, e_id, e_port, e_mac = "", "", "", "", ""
-                            st.markdown("**Actualizar Ubicación**")
-                            col_e1, col_e2 = st.columns(2)
-                            with col_e1:
-                                e_dep = st.selectbox("Dependencia:", ["CM", "FN", "TI"], index=["CM", "FN", "TI"].index(row['dependencia']) if row['dependencia'] in ["CM", "FN", "TI"] else 0)
-                            with col_e2:
-                                e_place = st.selectbox("Lugar:", cat_lugar["lugar"], index=list(cat_lugar["lugar"]).index(row['lugar']) if row['lugar'] in list(cat_lugar["lugar"]) else 0)
+                            e_rack, e_tipo, e_id, e_port = "", "", "", ""
+
+                        st.markdown("---")
+                        st.markdown("**Ubicación y Responsable**")
+                        col_e3, col_e4 = st.columns(2)
+                        with col_e3:
+                            e_dep = st.selectbox("Dependencia:", cat_dependencia["dependencia"], index=list(cat_dependencia["dependencia"]).index(row['dependencia']) if row['dependencia'] in list(cat_dependencia["dependencia"]) else 0)
+                        with col_e4:
+                            e_place = st.selectbox("Lugar:", cat_lugar["lugar"], index=list(cat_lugar["lugar"]).index(row['lugar']) if row['lugar'] in list(cat_lugar["lugar"]) else 0)
                         
                         col_btns1, col_btns2 = st.columns(2)
                         with col_btns1:
@@ -385,10 +408,12 @@ if len(df_f) > 0:
                                     st.error("❌ El punto debe tener una nomenclatura.")
                                 elif nom_en_otros:
                                     st.error(f"❌ La nomenclatura '**{e_nom}**' ya está en uso por otro punto.")
-                                elif e_comp and not e_port.isnumeric():
+                                elif e_tipo != "None" and e_port and not e_port.isnumeric():
                                     st.error("❌ El puerto debe ser un número.")
                                 else:
-                                    df.loc[idx, ["rack","tipo","identificador","puerto","dependencia","lugar","color","mac","nomenclatura"]] = [e_rack, e_tipo, e_id, e_port, e_dep, e_place, e_color, e_mac, e_nom]
+                                    # Conservamos X, Y y MAC originales
+                                    old_x, old_y, old_mac = row['x'], row['y'], row.get('mac', '')
+                                    df.loc[idx, ["x","y","rack","tipo","identificador","puerto","dependencia","lugar","color","mac","nomenclatura"]] = [old_x, old_y, e_rack, e_tipo, e_id, e_port, e_dep, e_place, e_color, old_mac, e_nom]
                                     df.to_csv(CSV_FILE, index=False)
                                 st.session_state[f"ed_{idx}"] = False
                                 st.success("✅ Cambios guardados.")
