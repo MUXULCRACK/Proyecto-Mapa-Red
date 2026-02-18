@@ -124,14 +124,14 @@ def draw_points(image, points_df, deleted_df=None, show_hist=False):
             last_3 = deleted_df.tail(3)
             for _, row in last_3.iterrows():
                 x, y = int(row['x']), int(row['y'])
-                r = 12
+                r = 8  # Antes 12
                 draw.ellipse([x-r, y-r, x+r, y+r], fill="#808080", outline="white", width=2)
-                draw.line([x-5, y-5, x+5, y+5], fill="white", width=2)
-                draw.line([x+5, y-5, x-5, y+5], fill="white", width=2)
+                draw.line([x-3, y-3, x+3, y+3], fill="white", width=2)
+                draw.line([x+3, y-3, x-3, y+3], fill="white", width=2)
     else:
         for _, row in points_df.iterrows():
             x, y, color = int(row['x']), int(row['y']), row['color']
-            r = 10
+            r = 6  # Antes 10
             draw.ellipse([x-r, y-r, x+r, y+r], fill=color, outline="white", width=2)
     return image
 
