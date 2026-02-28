@@ -1,1 +1,2 @@
-x,y,tipo,identificador,color,rack,puerto,dependencia,lugar,fecha_hora,ip,nomenclatura
+x,y,color,rack,switch,patch_panel,puerto_switch,puerto_patch,dependencia,lugar,nomenclatura,fecha_hora,ip
+429,1050,#00FF00,RK1,,,,,CM,Sistemas,Local,TI-1A,2026-02-19 08:40:21
