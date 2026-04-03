@@ -1,13 +1,17 @@
-x,y,color,rack,switch,patch_panel,puerto_switch,puerto_patch,dependencia,lugar,nomenclatura
-432,1048,#0000FF,,,,,,TI,Sistemas,TI-1A
-432,1058,#0000FF,,,,,,TI,Sistemas,TI-1B
-429,1072,#0000FF,,,,,,TI,Sistemas,TI-2A
-422,1073,#0000FF,,,,,,TI,Sistemas,TI-2B
-405,1078,#0000FF,,,,,,TI,Sistemas,TI-3A
-396,1080,#0000FF,,,,,,TI,Sistemas,TI-3B
-381,1080,#0000FF,,,,,,TI,Sistemas,TI-4A
-374,1083,#0000FF,,,,,,TI,Sistemas,TI-4B
-366,1080,#0000FF,,,,,,TI,Sistemas,TI-5A
-366,1071,#0000FF,,,,,,TI,Sistemas,TI-5B
-367,1059,#0000FF,,,,,,TI,Sistemas,TI-6A
-364,1052,#0000FF,,,,,,TI,Sistemas,TI-6B
+x,y,color,rack,switch,patch_panel,puerto_switch,puerto_patch,dependencia,lugar,nomenclatura,comentarios
+432,1048,#0000FF,,,,,,TI,Sistemas,TI-1A,
+432,1058,#0000FF,,,,,,TI,Sistemas,TI-1B,
+429,1072,#0000FF,,,,,,TI,Sistemas,TI-2A,
+422,1073,#0000FF,,,,,,TI,Sistemas,TI-2B,
+405,1078,#0000FF,,,,,,TI,Sistemas,TI-3A,
+396,1080,#0000FF,,,,,,TI,Sistemas,TI-3B,
+381,1080,#0000FF,,,,,,TI,Sistemas,TI-4A,
+374,1083,#0000FF,,,,,,TI,Sistemas,TI-4B,
+366,1080,#0000FF,,,,,,TI,Sistemas,TI-5A,
+366,1071,#0000FF,,,,,,TI,Sistemas,TI-5B,
+367,1059,#0000FF,,,,,,TI,Sistemas,TI-6A,
+364,1052,#0000FF,,,,,,TI,Sistemas,TI-6B,
+649,877,#00FF00,RK1,SWA,PPD1,1.0,1.0,FN,FINANCIERA (FIN),FIN1,
+689,883,#FFA500,RK1,No conectado,PPD2,1.0,1.0,FN,FINANCIERA (FIN),FIN2,
+690,902,#00FF00,RK1,SWA,PPD1,2.0,2.0,FN,FINANCIERA (FIN),FIN3,
+689,912,#FFA500,RK1,No conectado,PPD1,2.0,2.0,FN,FINANCIERA (FIN),FIN3,

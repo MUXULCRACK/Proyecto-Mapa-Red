@@ -22,7 +22,7 @@ CAT_LUGAR = "catalogo_lugares.csv"
 CAT_DEPENDENCIA = "catalogo_dependencias.csv"
 
 # Columnas del CSV principal: ahora tiene switch Y patch_panel por separado
-CSV_COLUMNS = ["x","y","color","rack","switch","patch_panel","puerto_switch","puerto_patch","dependencia","lugar","nomenclatura"]
+CSV_COLUMNS = ["x","y","color","rack","switch","patch_panel","puerto_switch","puerto_patch","dependencia","lugar","nomenclatura","comentarios"]
 
 def create_or_fix_csv(filename, columns):
     try:
@@ -43,7 +43,7 @@ def create_or_fix_csv(filename, columns):
 # CARGAR DATOS
 # ===========================================
 df = create_or_fix_csv(CSV_FILE, CSV_COLUMNS)
-df_deleted = create_or_fix_csv(DELETED_CSV_FILE, ["x","y","color","rack","switch","patch_panel","puerto_switch","puerto_patch","dependencia","lugar","nomenclatura","fecha_hora","ip"])
+df_deleted = create_or_fix_csv(DELETED_CSV_FILE, ["x","y","color","rack","switch","patch_panel","puerto_switch","puerto_patch","dependencia","lugar","nomenclatura","comentarios","fecha_hora","ip"])
 
 df = df.drop_duplicates(subset=["x", "y"], keep="first")
 
@@ -145,7 +145,7 @@ colores_a_nombres = {
     "#00FF00": "🟢 Funcionando y ubicado (VERDE)",
     "#FF0000": "🔴 No sirve y ubicado (ROJO)",
     "#0000FF": "🔵 Sin identificar y funcionando (AZUL)",
-    "#FFA500": "🟠 Sin identificar y no se sabe funcionamiento (NARANJA)"
+    "#FFA500": "🟠 Ubicado sin switch (NARANJA)"
 }
 
 # Helper: obtener switches y patches para un rack
@@ -180,7 +180,7 @@ if "last_click" in st.session_state:
 
         estado_sel = st.selectbox("Estado del Punto de Red:", list(colores_a_nombres.values()), key="new_point_status")
         color_sel = [c for c, n in colores_a_nombres.items() if n == estado_sel][0]
-        is_completo = "VERDE" in estado_sel or "ROJO" in estado_sel
+        is_completo = "VERDE" in estado_sel or "ROJO" in estado_sel or "NARANJA" in estado_sel
 
         with st.form("crear_punto"):
             nom_sel = st.text_input("Nombre del Punto (Nomenclatura):", help="Ej: PTO-01, RECEPCIÓN-A, etc.")
@@ -216,16 +216,18 @@ if "last_click" in st.session_state:
                 with col_c2:
                     place_sel = st.selectbox("Lugar:", cat_lugar["lugar"])
 
+            comentarios_sel = st.text_area("💬 Comentarios:", placeholder="Observaciones adicionales (opcional)...")
+
             if st.form_submit_button("✅ Guardar Punto", use_container_width=True):
-                nom_existe = nom_sel in df["nomenclatura"].astype(str).values
+                nom_existe = (df["nomenclatura"].astype(str) == nom_sel).sum() >= 2
 
                 if is_completo and (not r_sel or sw_sel == "(No hay)" or pp_sel == "(No hay)" or not puerto_sw_sel or not puerto_pp_sel):
                     st.error("❌ Por favor completa todos los campos del rack (switch, patch panel, puerto en switch y puerto en patch panel).")
                 elif not nom_sel:
                     st.error("❌ Por favor asigna una Nomenclatura o Nombre al punto.")
                 elif nom_existe:
-                    st.error(f"❌ La nomenclatura '**{nom_sel}**' ya está en uso.")
-                elif is_completo and (not puerto_sw_sel.isnumeric() or not puerto_pp_sel.isnumeric()):
+                    st.error(f"❌ La nomenclatura '**{nom_sel}**' ya está en uso 2 veces (máximo permitido).")
+                elif is_completo and (puerto_sw_sel and not puerto_sw_sel.isnumeric() or puerto_pp_sel and not puerto_pp_sel.isnumeric()):
                     st.error("❌ Los puertos deben ser números.")
                 else:
                     new_row = {
@@ -238,7 +240,8 @@ if "last_click" in st.session_state:
                         "puerto_patch": puerto_pp_sel,
                         "dependencia": dep_sel,
                         "lugar": place_sel,
-                        "nomenclatura": nom_sel
+                        "nomenclatura": nom_sel,
+                        "comentarios": comentarios_sel
                     }
                     df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
                     df.to_csv(CSV_FILE, index=False)
@@ -344,12 +347,15 @@ if clicked_map2:
                         rack_info = (f"- **Rack:** {rack_val}\n"
                                      f"- **Switch:** {sw_val} | **Puerto Switch:** {psw_val}\n"
                                      f"- **Patch Panel:** {pp_val} | **Puerto PP:** {ppp_val}\n")
+                    coment_v = str(closest.get('comentarios','') or '')
+                    coment_line = f"- **Comentarios:** {coment_v}\n" if coment_v else ""
                     st.info(
                         f"🔍 **Detalles del Punto:**\n\n"
                         f"- **Nomenclatura:** {closest.get('nomenclatura','N/A')}\n"
                         f"- **Estado:** {colores_a_nombres.get(closest['color'], 'Desconocido')}\n"
                         f"- **Ubicación:** {closest.get('lugar','')} | **Dependencia:** {closest.get('dependencia','')}\n"
                         f"{rack_info}"
+                        f"{coment_line}"
                     )
                     if st.button("🎯 Re-ubicar este punto", key=f"move_btn_{closest_idx}"):
                         st.session_state["moving_idx"] = closest_idx
@@ -383,7 +389,11 @@ if len(df_f) > 0:
                     st.write(f"🏠 **{nom_v}** | 🔌 Rack: {rack_v} | SW: {sw_v} (P:{psw_v}) | PP: {pp_v} (P:{ppp_v}) | {row.get('dependencia','')}")
                 else:
                     st.write(f"🚩 **{nom_v}** | {row.get('lugar','')} | {row.get('dependencia','')}")
-                st.caption(f"Estado: {colores_a_nombres.get(row['color'], '??')}")
+                coment_row = str(row.get('comentarios','') or '')
+                caption_txt = f"Estado: {colores_a_nombres.get(row['color'], '??')}"
+                if coment_row:
+                    caption_txt += f" | 💬 {coment_row}"
+                st.caption(caption_txt)
             with c2:
                 if st.button("✏️", key=f"e_{idx}"):
                     st.session_state[f"ed_{idx}"] = True
@@ -418,7 +428,7 @@ if len(df_f) > 0:
                         key=f"edit_status_sel_{idx}"
                     )
                     e_color = [c for c, n in colores_a_nombres.items() if n == e_estado][0]
-                    e_comp = "VERDE" in e_estado or "ROJO" in e_estado
+                    e_comp = "VERDE" in e_estado or "ROJO" in e_estado or "NARANJA" in e_estado
 
                     with st.form(f"f_edit_{idx}"):
                         e_nom = st.text_input("Nomenclatura / Nombre:", value=row.get('nomenclatura', ''))
@@ -458,20 +468,22 @@ if len(df_f) > 0:
                             e_place = st.selectbox("Lugar:", lug_list,
                                                    index=lug_list.index(row['lugar']) if row['lugar'] in lug_list else 0)
 
+                        e_comentarios = st.text_area("💬 Comentarios:", value=str(row.get('comentarios','') or ''), placeholder="Observaciones adicionales (opcional)...")
+
                         col_btns1, col_btns2 = st.columns(2)
                         with col_btns1:
                             if st.form_submit_button("💾 Actualizar Cambios", use_container_width=True):
-                                nom_en_otros = e_nom in df.drop(idx)["nomenclatura"].astype(str).values
+                                nom_en_otros = (df.drop(idx)["nomenclatura"].astype(str) == e_nom).sum() >= 2
                                 if not e_nom:
                                     st.error("❌ El punto debe tener una nomenclatura.")
                                 elif nom_en_otros:
-                                    st.error(f"❌ La nomenclatura '**{e_nom}**' ya está en uso.")
+                                    st.error(f"❌ La nomenclatura '**{e_nom}**' ya está en uso 2 veces (máximo permitido).")
                                 elif e_comp and ((e_psw and not e_psw.isnumeric()) or (e_ppp and not e_ppp.isnumeric())):
                                     st.error("❌ Los puertos deben ser números.")
                                 else:
                                     old_x, old_y = row['x'], row['y']
-                                    df.loc[idx, ["x","y","rack","switch","patch_panel","puerto_switch","puerto_patch","dependencia","lugar","color","nomenclatura"]] = \
-                                        [old_x, old_y, e_rack, e_sw, e_pp, e_psw, e_ppp, e_dep, e_place, e_color, e_nom]
+                                    df.loc[idx, ["x","y","rack","switch","patch_panel","puerto_switch","puerto_patch","dependencia","lugar","color","nomenclatura","comentarios"]] = \
+                                        [old_x, old_y, e_rack, e_sw, e_pp, e_psw, e_ppp, e_dep, e_place, e_color, e_nom, e_comentarios]
                                     df.to_csv(CSV_FILE, index=False)
                                     st.session_state[f"ed_{idx}"] = False
                                     st.success("✅ Cambios guardados.")

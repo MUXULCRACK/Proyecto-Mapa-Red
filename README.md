@@ -1,0 +1,95 @@
+# 🗺️ Mapa Interactivo de Red – Empresa
+
+Aplicación web interactiva construida con **Streamlit** para visualizar, registrar y gestionar puntos de red sobre un croquis de instalaciones. Permite ubicar equipos en un mapa, asociarlos a racks, switches y patch panels, y hacer seguimiento del estado de cada conexión.
+
+---
+
+## 🚀 Cómo ejecutar
+
+Haz doble clic en el archivo **`run_app.bat`**.
+
+> Esto instala las dependencias automáticamente y abre la aplicación en el navegador.
+
+Para detenerla presiona `Ctrl+C` en la ventana de comandos.
+
+---
+
+## 📋 Requisitos
+
+- Python instalado en el sistema
+- Conexión a internet (solo la primera vez para instalar dependencias)
+
+Dependencias (se instalan automáticamente):
+
+```
+streamlit
+streamlit-image-coordinates
+pandas
+pillow
+```
+
+---
+
+## 🗂️ Estructura de archivos
+
+| Archivo | Descripción |
+|---|---|
+| `app.py` | Código principal de la aplicación |
+| `croquis.png` | Imagen base del mapa de instalaciones |
+| `network_points.csv` | Puntos de red registrados |
+| `deleted_points.csv` | Historial de puntos eliminados |
+| `catalogo_racks.csv` | Catálogo de racks disponibles |
+| `catalogo_switch.csv` | Switches por rack |
+| `catalogo_patch.csv` | Patch panels por rack |
+| `catalogo_lugares.csv` | Catálogo de lugares/áreas |
+| `catalogo_dependencias.csv` | Catálogo de dependencias/departamentos |
+| `run_app.bat` | Lanzador de la aplicación (Windows) |
+| `requirements.txt` | Dependencias de Python |
+
+---
+
+## 🎯 Funcionalidades
+
+### Mapa 1 – Agregar puntos
+- Haz clic sobre el croquis para capturar coordenadas
+- Selecciona el **estado** del punto de red
+- Completa los datos: Rack, Switch, Patch Panel, puertos, Dependencia, Lugar y Comentarios
+- El nombre del punto puede repetirse hasta **2 veces**
+
+### Mapa 2 – Visualización y filtros
+- Visualiza todos los puntos sobre el croquis con colores según su estado
+- Filtra por: **Rack y Equipo**, **Lugar** o **Dependencia**
+- Haz clic sobre un punto para ver sus detalles completos
+- Modo **Re-ubicación**: mueve un punto a una nueva posición en el mapa
+
+### Listado de puntos
+- Lista todos los puntos filtrados con sus datos
+- Botón **✏️** para editar cualquier campo del punto
+- Botón **🗑️** para eliminar (se guarda en el historial)
+
+### Historial de eliminados 🕒
+- Actívalo desde la barra lateral
+- Muestra los últimos 3 puntos eliminados en el mapa (en gris)
+- Haz clic sobre un punto gris para ver quién lo eliminó y cuándo
+
+---
+
+## 🎨 Estados de un punto
+
+| Color | Estado | Descripción |
+|---|---|---|
+| 🟢 Verde | Funcionando y ubicado | Equipo identificado, conectado y operativo |
+| 🔴 Rojo | No sirve y ubicado | Equipo identificado pero sin funcionamiento |
+| 🟠 Naranja | Ubicado sin switch | Equipo ubicado, sin conexión a switch registrada |
+| 🔵 Azul | Sin identificar y funcionando | Equipo funcionando pero aún no identificado |
+
+---
+
+## ⚙️ Catálogos (barra lateral)
+
+Desde la barra lateral se pueden agregar entradas a los catálogos:
+- **Rack** – Nombre del gabinete
+- **Switch** – Asociado a un rack
+- **Patch Panel** – Asociado a un rack
+- **Lugar** – Área o zona física
+- **Dependencia** – Departamento responsable
