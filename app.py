@@ -146,7 +146,7 @@ colores_a_nombres = {
     "#FF0000": "🔴 No sirve y ubicado (ROJO)",
     "#0000FF": "🔵 Sin identificar y funcionando (AZUL)",
     "#FFA500": "🟠 Ubicado sin switch (NARANJA)",
-    "#FF69B4": "🟣 Ponchado erróneo (MORADO)"
+    "#800080": "🟣 Ponchado erróneo (MORADO)"
 }
 
 # Helper: obtener switches y patches para un rack
