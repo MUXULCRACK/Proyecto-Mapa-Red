@@ -81,6 +81,7 @@ pillow
 | 🟢 Verde | Funcionando y ubicado | Equipo identificado, conectado y operativo |
 | 🔴 Rojo | No sirve y ubicado | Equipo identificado pero sin funcionamiento |
 | 🟠 Naranja | Ubicado sin switch | Equipo ubicado, sin conexión a switch registrada |
+| 🟣 Rosado | Ponchado erróneo | Equipo ubicado, pero con un ponchado incorrecto (sin información del switch) |
 | 🔵 Azul | Sin identificar y funcionando | Equipo funcionando pero aún no identificado |
 
 ---
