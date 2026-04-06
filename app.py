@@ -145,7 +145,8 @@ colores_a_nombres = {
     "#00FF00": "🟢 Funcionando y ubicado (VERDE)",
     "#FF0000": "🔴 No sirve y ubicado (ROJO)",
     "#0000FF": "🔵 Sin identificar y funcionando (AZUL)",
-    "#FFA500": "🟠 Ubicado sin switch (NARANJA)"
+    "#FFA500": "🟠 Ubicado sin switch (NARANJA)",
+    "#FF69B4": "🟣 Ponchado erróneo (MORADO)"
 }
 
 # Helper: obtener switches y patches para un rack
@@ -180,7 +181,8 @@ if "last_click" in st.session_state:
 
         estado_sel = st.selectbox("Estado del Punto de Red:", list(colores_a_nombres.values()), key="new_point_status")
         color_sel = [c for c, n in colores_a_nombres.items() if n == estado_sel][0]
-        is_completo = "VERDE" in estado_sel or "ROJO" in estado_sel or "NARANJA" in estado_sel
+        is_completo = "VERDE" in estado_sel or "ROJO" in estado_sel or "NARANJA" in estado_sel or "MORADO" in estado_sel
+        is_no_switch = "NARANJA" in estado_sel or "MORADO" in estado_sel
 
         with st.form("crear_punto"):
             nom_sel = st.text_input("Nombre del Punto (Nomenclatura):", help="Ej: PTO-01, RECEPCIÓN-A, etc.")
@@ -192,9 +194,13 @@ if "last_click" in st.session_state:
                 # Switch y Patch Panel juntos en dos columnas
                 col_sw, col_pp = st.columns(2)
                 with col_sw:
-                    sw_list = get_switches(r_sel)
-                    sw_sel = st.selectbox("Switch:", sw_list if sw_list else ["(No hay)"])
-                    puerto_sw_sel = st.text_input("Puerto en Switch (número):")
+                    if is_no_switch:
+                        sw_sel = ""
+                        puerto_sw_sel = ""
+                    else:
+                        sw_list = get_switches(r_sel)
+                        sw_sel = st.selectbox("Switch:", sw_list if sw_list else ["(No hay)"])
+                        puerto_sw_sel = st.text_input("Puerto en Switch (número):")
                 with col_pp:
                     pp_list = get_patches(r_sel)
                     pp_sel = st.selectbox("Patch Panel:", pp_list if pp_list else ["(No hay)"])
@@ -221,13 +227,13 @@ if "last_click" in st.session_state:
             if st.form_submit_button("✅ Guardar Punto", use_container_width=True):
                 nom_existe = (df["nomenclatura"].astype(str) == nom_sel).sum() >= 2
 
-                if is_completo and (not r_sel or sw_sel == "(No hay)" or pp_sel == "(No hay)" or not puerto_sw_sel or not puerto_pp_sel):
-                    st.error("❌ Por favor completa todos los campos del rack (switch, patch panel, puerto en switch y puerto en patch panel).")
+                if is_completo and (not r_sel or (not is_no_switch and sw_sel == "(No hay)") or pp_sel == "(No hay)" or (not is_no_switch and not puerto_sw_sel) or not puerto_pp_sel):
+                    st.error("❌ Por favor completa todos los campos requeridos del rack.")
                 elif not nom_sel:
                     st.error("❌ Por favor asigna una Nomenclatura o Nombre al punto.")
                 elif nom_existe:
                     st.error(f"❌ La nomenclatura '**{nom_sel}**' ya está en uso 2 veces (máximo permitido).")
-                elif is_completo and (puerto_sw_sel and not puerto_sw_sel.isnumeric() or puerto_pp_sel and not puerto_pp_sel.isnumeric()):
+                elif is_completo and ((not is_no_switch and puerto_sw_sel and not puerto_sw_sel.isnumeric()) or (puerto_pp_sel and not puerto_pp_sel.isnumeric())):
                     st.error("❌ Los puertos deben ser números.")
                 else:
                     new_row = {
@@ -428,7 +434,8 @@ if len(df_f) > 0:
                         key=f"edit_status_sel_{idx}"
                     )
                     e_color = [c for c, n in colores_a_nombres.items() if n == e_estado][0]
-                    e_comp = "VERDE" in e_estado or "ROJO" in e_estado or "NARANJA" in e_estado
+                    e_comp = "VERDE" in e_estado or "ROJO" in e_estado or "NARANJA" in e_estado or "MORADO" in e_estado
+                    e_no_switch = "NARANJA" in e_estado or "MORADO" in e_estado
 
                     with st.form(f"f_edit_{idx}"):
                         e_nom = st.text_input("Nomenclatura / Nombre:", value=row.get('nomenclatura', ''))
@@ -441,11 +448,15 @@ if len(df_f) > 0:
 
                             col_esw, col_epp = st.columns(2)
                             with col_esw:
-                                e_sw_list = get_switches(e_rack)
-                                e_sw_ids  = e_sw_list if e_sw_list else ["(No hay)"]
-                                e_sw_idx  = e_sw_ids.index(sw_v) if sw_v in e_sw_ids else 0
-                                e_sw = st.selectbox("Switch:", e_sw_ids, index=e_sw_idx)
-                                e_psw = st.text_input("Puerto en Switch:", value=str(row.get('puerto_switch','')) if pd.notna(row.get('puerto_switch','')) else "")
+                                if e_no_switch:
+                                    e_sw = ""
+                                    e_psw = ""
+                                else:
+                                    e_sw_list = get_switches(e_rack)
+                                    e_sw_ids  = e_sw_list if e_sw_list else ["(No hay)"]
+                                    e_sw_idx  = e_sw_ids.index(sw_v) if sw_v in e_sw_ids else 0
+                                    e_sw = st.selectbox("Switch:", e_sw_ids, index=e_sw_idx)
+                                    e_psw = st.text_input("Puerto en Switch:", value=str(row.get('puerto_switch','')) if pd.notna(row.get('puerto_switch','')) else "")
                             with col_epp:
                                 e_pp_list = get_patches(e_rack)
                                 e_pp_ids  = e_pp_list if e_pp_list else ["(No hay)"]
@@ -478,7 +489,7 @@ if len(df_f) > 0:
                                     st.error("❌ El punto debe tener una nomenclatura.")
                                 elif nom_en_otros:
                                     st.error(f"❌ La nomenclatura '**{e_nom}**' ya está en uso 2 veces (máximo permitido).")
-                                elif e_comp and ((e_psw and not e_psw.isnumeric()) or (e_ppp and not e_ppp.isnumeric())):
+                                elif e_comp and ((not e_no_switch and e_psw and not e_psw.isnumeric()) or (e_ppp and not e_ppp.isnumeric())):
                                     st.error("❌ Los puertos deben ser números.")
                                 else:
                                     old_x, old_y = row['x'], row['y']
