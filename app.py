@@ -210,7 +210,7 @@ if "last_click" in st.session_state:
                 st.markdown("**Ubicación y Responsable**")
                 col_c3, col_c4 = st.columns(2)
                 with col_c3:
-                    dep_sel = st.selectbox("Dependencia:", cat_dependencia["dependencia"])
+                    dep_sel = st.multiselect("Dependencia:", cat_dependencia["dependencia"])
                 with col_c4:
                     place_sel = st.selectbox("Lugar:", cat_lugar["lugar"])
             else:
@@ -218,7 +218,7 @@ if "last_click" in st.session_state:
                 st.markdown("**Ubicación y Responsable**")
                 col_c1, col_c2 = st.columns(2)
                 with col_c1:
-                    dep_sel = st.selectbox("Dependencia:", cat_dependencia["dependencia"])
+                    dep_sel = st.multiselect("Dependencia:", cat_dependencia["dependencia"])
                 with col_c2:
                     place_sel = st.selectbox("Lugar:", cat_lugar["lugar"])
 
@@ -244,7 +244,7 @@ if "last_click" in st.session_state:
                         "patch_panel": pp_sel,
                         "puerto_switch": puerto_sw_sel,
                         "puerto_patch": puerto_pp_sel,
-                        "dependencia": dep_sel,
+                        "dependencia": ", ".join(dep_sel) if isinstance(dep_sel, list) else dep_sel,
                         "lugar": place_sel,
                         "nomenclatura": nom_sel,
                         "comentarios": comentarios_sel
@@ -288,14 +288,14 @@ with col_f2:
         if f_rk != "Todos": df_f = df_f[df_f["rack"] == f_rk]
         if f_sw != "Todos": df_f = df_f[df_f["switch"].astype(str) == f_sw]
         if f_pp != "Todos": df_f = df_f[df_f["patch_panel"].astype(str) == f_pp]
-        if f_dp != "Todos": df_f = df_f[df_f["dependencia"] == f_dp]
+        if f_dp != "Todos": df_f = df_f[df_f["dependencia"].str.contains(f_dp, na=False, regex=False)]
 
     elif filtro_modo == "Lugar":
         lf = st.selectbox("Filtrar por Lugar:", ["Todos"] + list(cat_lugar["lugar"]))
         if lf != "Todos": df_f = df_f[df_f["lugar"] == lf]
     elif filtro_modo == "Dependencia":
         df_df = st.selectbox("Filtrar por Dependencia:", ["Todos"] + list(cat_dependencia["dependencia"]))
-        if df_df != "Todos": df_f = df_f[df_f["dependencia"] == df_df]
+        if df_df != "Todos": df_f = df_f[df_f["dependencia"].str.contains(df_df, na=False, regex=False)]
 
 with col_f3:
     sf = st.selectbox("Estado:", ["Todos"] + list(colores_a_nombres.values()))
@@ -472,8 +472,9 @@ if len(df_f) > 0:
                         col_e3, col_e4 = st.columns(2)
                         with col_e3:
                             dep_list = list(cat_dependencia["dependencia"])
-                            e_dep = st.selectbox("Dependencia:", dep_list,
-                                                 index=dep_list.index(row['dependencia']) if row['dependencia'] in dep_list else 0)
+                            current_deps = [d.strip() for d in str(row['dependencia']).split(",")] if pd.notna(row['dependencia']) and str(row['dependencia']).strip() else []
+                            valid_current_deps = [d for d in current_deps if d in dep_list]
+                            e_dep = st.multiselect("Dependencia:", dep_list, default=valid_current_deps)
                         with col_e4:
                             lug_list = list(cat_lugar["lugar"])
                             e_place = st.selectbox("Lugar:", lug_list,
@@ -494,7 +495,7 @@ if len(df_f) > 0:
                                 else:
                                     old_x, old_y = row['x'], row['y']
                                     df.loc[idx, ["x","y","rack","switch","patch_panel","puerto_switch","puerto_patch","dependencia","lugar","color","nomenclatura","comentarios"]] = \
-                                        [old_x, old_y, e_rack, e_sw, e_pp, e_psw, e_ppp, e_dep, e_place, e_color, e_nom, e_comentarios]
+                                        [old_x, old_y, e_rack, e_sw, e_pp, e_psw, e_ppp, ", ".join(e_dep) if isinstance(e_dep, list) else e_dep, e_place, e_color, e_nom, e_comentarios]
                                     df.to_csv(CSV_FILE, index=False)
                                     st.session_state[f"ed_{idx}"] = False
                                     st.success("✅ Cambios guardados.")
