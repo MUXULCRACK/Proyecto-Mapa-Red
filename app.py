@@ -58,9 +58,17 @@ if len(cat_dependencia) == 0:
         cat_dependencia.loc[len(cat_dependencia)] = [dep]
     cat_dependencia.to_csv(CAT_DEPENDENCIA, index=False)
 
-try:
-    base_img = Image.open(IMAGE_FILE)
-except:
+@st.cache_resource(show_spinner=False)
+def load_base_image():
+    try:
+        img = Image.open(IMAGE_FILE)
+        img.load()  # Forzar carga en memoria RAM
+        return img
+    except Exception:
+        return None
+
+base_img = load_base_image()
+if base_img is None:
     st.error(f"No encuentro la imagen: {IMAGE_FILE}")
     st.stop()
 
@@ -144,9 +152,10 @@ def draw_points(image, points_df, deleted_df=None, show_hist=False):
 colores_a_nombres = {
     "#00FF00": "🟢 Funcionando y ubicado (VERDE)",
     "#FF0000": "🔴 No sirve y ubicado (ROJO)",
-    "#0000FF": "🔵 Sin identificar y funcionando (AZUL)",
+    "#0000FF": "🔵 Sin identificar (AZUL)",
     "#FFA500": "🟠 Ubicado sin switch (NARANJA)",
-    "#800080": "🟣 Ponchado erróneo (MORADO)"
+    "#800080": "🟣 Ponchado erróneo (MORADO)",
+    "#FFFF00": "🟡 Funcionando sin usar (AMARILLO)"
 }
 
 # Helper: obtener switches y patches para un rack
@@ -181,7 +190,7 @@ if "last_click" in st.session_state:
 
         estado_sel = st.selectbox("Estado del Punto de Red:", list(colores_a_nombres.values()), key="new_point_status")
         color_sel = [c for c, n in colores_a_nombres.items() if n == estado_sel][0]
-        is_completo = "VERDE" in estado_sel or "ROJO" in estado_sel or "NARANJA" in estado_sel or "MORADO" in estado_sel
+        is_completo = "VERDE" in estado_sel or "ROJO" in estado_sel or "NARANJA" in estado_sel or "MORADO" in estado_sel or "AMARILLO" in estado_sel
         is_no_switch = "NARANJA" in estado_sel or "MORADO" in estado_sel
 
         with st.form("crear_punto"):
@@ -434,7 +443,7 @@ if len(df_f) > 0:
                         key=f"edit_status_sel_{idx}"
                     )
                     e_color = [c for c, n in colores_a_nombres.items() if n == e_estado][0]
-                    e_comp = "VERDE" in e_estado or "ROJO" in e_estado or "NARANJA" in e_estado or "MORADO" in e_estado
+                    e_comp = "VERDE" in e_estado or "ROJO" in e_estado or "NARANJA" in e_estado or "MORADO" in e_estado or "AMARILLO" in e_estado
                     e_no_switch = "NARANJA" in e_estado or "MORADO" in e_estado
 
                     with st.form(f"f_edit_{idx}"):
