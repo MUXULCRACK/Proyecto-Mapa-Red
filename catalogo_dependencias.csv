@@ -1,9 +1,9 @@
 dependencia
-CM
-FN
-TI
-CC
-SM
-AD
-VOZ
-WIFI
+CM(100)
+FN(102)
+TI(106)
+CC(104)
+SV(10)
+AD(103)
+VOZ(200)
+WIFI(107)
