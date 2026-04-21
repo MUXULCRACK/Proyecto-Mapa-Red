@@ -6,11 +6,17 @@ Aplicación web interactiva construida con **Streamlit** para visualizar, regist
 
 ## 🚀 Cómo ejecutar
 
+**En Windows:**
 Haz doble clic en el archivo **`run_app.bat`**.
 
-> Esto instala las dependencias automáticamente y abre la aplicación en el navegador.
+**En Mac o Linux:**
+1. Abre una terminal en la carpeta del proyecto.
+2. Da permisos de ejecución al script (solo la primera vez): `chmod +x run_app.sh`
+3. Ejecuta el script: `./run_app.sh`
 
-Para detenerla presiona `Ctrl+C` en la ventana de comandos.
+> Esto instalará las dependencias necesarias automáticamente y abrirá la aplicación en tu navegador.
+
+Para detener la aplicación, presiona `Ctrl+C` en la ventana de comandos/terminal donde se está ejecutando.
 
 ---
 
@@ -44,6 +50,7 @@ pillow
 | `catalogo_lugares.csv` | Catálogo de lugares/áreas |
 | `catalogo_dependencias.csv` | Catálogo de dependencias/departamentos |
 | `run_app.bat` | Lanzador de la aplicación (Windows) |
+| `run_app.sh` | Lanzador de la aplicación (Mac/Linux) |
 | `requirements.txt` | Dependencias de Python |
 
 ---
@@ -93,4 +100,4 @@ Desde la barra lateral se pueden agregar entradas a los catálogos:
 - **Switch** – Asociado a un rack
 - **Patch Panel** – Asociado a un rack
 - **Lugar** – Área o zona física
-- **Dependencia** – Departamento responsable
+- **Dependencia** – Departamento responsable CON VLAN
