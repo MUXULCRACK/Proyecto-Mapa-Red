@@ -4,7 +4,7 @@ echo   Mapa Interactivo de Red - Launcher
 echo =========================================
 echo.
 echo Verificando dependencias...
-C:\Users\Huawei\AppData\Local\Microsoft\WindowsApps\python.exe -m pip install streamlit streamlit-image-coordinates pandas pillow --quiet --user >nul 2>&1
+:: C:\Users\Huawei\AppData\Local\Microsoft\WindowsApps\python.exe -m pip install streamlit streamlit-image-coordinates pandas pillow --quiet --user >nul 2>&1
 
 echo.
 echo Iniciando aplicación Streamlit...

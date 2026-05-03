@@ -151,6 +151,7 @@ def draw_points(image, points_df, deleted_df=None, show_hist=False):
 
 colores_a_nombres = {
     "#00FF00": "🟢 Funcionando y ubicado (VERDE)",
+    "#006400": "🟩 Funcionando directos (VERDE OSCURO)",
     "#FF0000": "🔴 No sirve y ubicado (ROJO)",
     "#0000FF": "🔵 Sin identificar (AZUL)",
     "#FFA500": "🟠 Ubicado sin switch (NARANJA)",
@@ -190,8 +191,9 @@ if "last_click" in st.session_state:
 
         estado_sel = st.selectbox("Estado del Punto de Red:", list(colores_a_nombres.values()), key="new_point_status")
         color_sel = [c for c, n in colores_a_nombres.items() if n == estado_sel][0]
-        is_completo = "VERDE" in estado_sel or "ROJO" in estado_sel or "NARANJA" in estado_sel or "MORADO" in estado_sel or "AMARILLO" in estado_sel
+        is_completo = "VERDE" in estado_sel or "VERDE OSCURO" in estado_sel or "ROJO" in estado_sel or "NARANJA" in estado_sel or "MORADO" in estado_sel or "AMARILLO" in estado_sel
         is_no_switch = "NARANJA" in estado_sel or "MORADO" in estado_sel
+        is_no_patch_panel = "VERDE OSCURO" in estado_sel
 
         with st.form("crear_punto"):
             nom_sel = st.text_input("Nombre del Punto (Nomenclatura):", help="Ej: PTO-01, RECEPCIÓN-A, etc.")
@@ -211,9 +213,13 @@ if "last_click" in st.session_state:
                         sw_sel = st.selectbox("Switch:", sw_list if sw_list else ["(No hay)"])
                         puerto_sw_sel = st.text_input("Puerto en Switch (número):")
                 with col_pp:
-                    pp_list = get_patches(r_sel)
-                    pp_sel = st.selectbox("Patch Panel:", pp_list if pp_list else ["(No hay)"])
-                    puerto_pp_sel = st.text_input("Puerto en Patch Panel (número):")
+                    if is_no_patch_panel:
+                        pp_sel = ""
+                        puerto_pp_sel = ""
+                    else:
+                        pp_list = get_patches(r_sel)
+                        pp_sel = st.selectbox("Patch Panel:", pp_list if pp_list else ["(No hay)"])
+                        puerto_pp_sel = st.text_input("Puerto en Patch Panel (número):")
 
                 st.markdown("---")
                 st.markdown("**Ubicación y Responsable**")
@@ -236,7 +242,7 @@ if "last_click" in st.session_state:
             if st.form_submit_button("✅ Guardar Punto", use_container_width=True):
                 nom_existe = (df["nomenclatura"].astype(str) == nom_sel).sum() >= 2
 
-                if is_completo and (not r_sel or (not is_no_switch and sw_sel == "(No hay)") or pp_sel == "(No hay)" or (not is_no_switch and not puerto_sw_sel) or not puerto_pp_sel):
+                if is_completo and (not r_sel or (not is_no_switch and sw_sel == "(No hay)") or (not is_no_patch_panel and pp_sel == "(No hay)") or (not is_no_switch and not puerto_sw_sel) or (not is_no_patch_panel and not puerto_pp_sel)):
                     st.error("❌ Por favor completa todos los campos requeridos del rack.")
                 elif not nom_sel:
                     st.error("❌ Por favor asigna una Nomenclatura o Nombre al punto.")
@@ -443,8 +449,9 @@ if len(df_f) > 0:
                         key=f"edit_status_sel_{idx}"
                     )
                     e_color = [c for c, n in colores_a_nombres.items() if n == e_estado][0]
-                    e_comp = "VERDE" in e_estado or "ROJO" in e_estado or "NARANJA" in e_estado or "MORADO" in e_estado or "AMARILLO" in e_estado
+                    e_comp = "VERDE" in e_estado or "VERDE OSCURO" in e_estado or "ROJO" in e_estado or "NARANJA" in e_estado or "MORADO" in e_estado or "AMARILLO" in e_estado
                     e_no_switch = "NARANJA" in e_estado or "MORADO" in e_estado
+                    e_no_patch_panel = "VERDE OSCURO" in e_estado
 
                     with st.form(f"f_edit_{idx}"):
                         e_nom = st.text_input("Nomenclatura / Nombre:", value=row.get('nomenclatura', ''))
@@ -467,12 +474,16 @@ if len(df_f) > 0:
                                     e_sw = st.selectbox("Switch:", e_sw_ids, index=e_sw_idx)
                                     e_psw = st.text_input("Puerto en Switch:", value=str(row.get('puerto_switch','')) if pd.notna(row.get('puerto_switch','')) else "")
                             with col_epp:
-                                e_pp_list = get_patches(e_rack)
-                                e_pp_ids  = e_pp_list if e_pp_list else ["(No hay)"]
-                                cur_pp    = str(row.get('patch_panel','') or '')
-                                e_pp_idx  = e_pp_ids.index(cur_pp) if cur_pp in e_pp_ids else 0
-                                e_pp = st.selectbox("Patch Panel:", e_pp_ids, index=e_pp_idx)
-                                e_ppp = st.text_input("Puerto en Patch Panel:", value=str(row.get('puerto_patch','')) if pd.notna(row.get('puerto_patch','')) else "")
+                                if e_no_patch_panel:
+                                    e_pp = ""
+                                    e_ppp = ""
+                                else:
+                                    e_pp_list = get_patches(e_rack)
+                                    e_pp_ids  = e_pp_list if e_pp_list else ["(No hay)"]
+                                    cur_pp    = str(row.get('patch_panel','') or '')
+                                    e_pp_idx  = e_pp_ids.index(cur_pp) if cur_pp in e_pp_ids else 0
+                                    e_pp = st.selectbox("Patch Panel:", e_pp_ids, index=e_pp_idx)
+                                    e_ppp = st.text_input("Puerto en Patch Panel:", value=str(row.get('puerto_patch','')) if pd.notna(row.get('puerto_patch','')) else "")
                         else:
                             e_rack, e_sw, e_pp, e_psw, e_ppp = "", "", "", "", ""
 

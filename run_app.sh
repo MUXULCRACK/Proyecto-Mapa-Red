@@ -4,7 +4,7 @@ echo "  Mapa Interactivo de Red - Launcher"
 echo "========================================="
 echo ""
 echo "Verificando dependencias..."
-pip3 install streamlit streamlit-image-coordinates pandas pillow --quiet --user >/dev/null 2>&1 || pip install streamlit streamlit-image-coordinates pandas pillow --quiet --user >/dev/null 2>&1
+# pip3 install streamlit streamlit-image-coordinates pandas pillow --quiet --user >/dev/null 2>&1 || pip install streamlit streamlit-image-coordinates pandas pillow --quiet --user >/dev/null 2>&1
 
 echo ""
 echo "Iniciando aplicación Streamlit..."
