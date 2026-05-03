@@ -119,6 +119,25 @@ if st.sidebar.button("Guardar Lugar"):
         st.sidebar.success("Lugar agregado.")
         st.rerun()
 
+st.sidebar.subheader("✏️ Editar Lugar")
+if len(cat_lugar) > 0:
+    lugar_to_edit = st.sidebar.selectbox("Selecciona un lugar para editar:", cat_lugar["lugar"], index=None, placeholder="Elige un lugar...", key="sb_edit_lugar_sel")
+    if lugar_to_edit:
+        edited_lugar = st.sidebar.text_input("Nuevo nombre del Lugar", value=lugar_to_edit, key="sb_edit_lugar_val")
+        if st.sidebar.button("Actualizar Lugar"):
+            if edited_lugar.strip() and edited_lugar != lugar_to_edit:
+                if edited_lugar in cat_lugar["lugar"].values:
+                    st.sidebar.error("Ese lugar ya existe.")
+                else:
+                    cat_lugar.loc[cat_lugar["lugar"] == lugar_to_edit, "lugar"] = edited_lugar
+                    cat_lugar.to_csv(CAT_LUGAR, index=False)
+                    
+                    df.loc[df["lugar"] == lugar_to_edit, "lugar"] = edited_lugar
+                    df.to_csv(CSV_FILE, index=False)
+                    
+                    st.sidebar.success(f"Lugar actualizado: '{lugar_to_edit}' -> '{edited_lugar}'")
+                    st.rerun()
+
 st.sidebar.subheader("➕ Agregar Dependencia")
 new_dep = st.sidebar.text_input("Nombre de la Dependencia", key="sb_new_dep")
 if st.sidebar.button("Guardar Dependencia"):
@@ -301,7 +320,10 @@ with col_f2:
             f_dp = st.selectbox("Dependencia:", ["Todos"] + list(cat_dependencia["dependencia"]), key="ff_dep")
 
         if f_rk != "Todos": df_f = df_f[df_f["rack"] == f_rk]
-        if f_sw != "Todos": df_f = df_f[df_f["switch"].astype(str) == f_sw]
+        if f_sw != "Todos": 
+            df_f = df_f[df_f["switch"].astype(str) == f_sw]
+            df_f["_sort_port"] = pd.to_numeric(df_f["puerto_switch"], errors="coerce")
+            df_f = df_f.sort_values(by="_sort_port", na_position="last").drop(columns=["_sort_port"])
         if f_pp != "Todos": df_f = df_f[df_f["patch_panel"].astype(str) == f_pp]
         if f_dp != "Todos": df_f = df_f[df_f["dependencia"].str.contains(f_dp, na=False, regex=False)]
 
@@ -394,9 +416,9 @@ if "moving_idx" in st.session_state:
 # ===========================================
 # LISTADO DE PUNTOS
 # ===========================================
-st.subheader("📄 Listado de puntos")
+st.subheader(f"📄 Listado de puntos ({len(df_f)} encontrados)")
 if len(df_f) > 0:
-    for idx, row in df_f.iterrows():
+    for i, (idx, row) in enumerate(df_f.iterrows(), 1):
         with st.container():
             c1, c2, c3 = st.columns([6,1,1])
             with c1:
@@ -407,9 +429,9 @@ if len(df_f) > 0:
                 if rack_v:
                     psw_v = str(row.get('puerto_switch','') or '')
                     ppp_v = str(row.get('puerto_patch','') or '')
-                    st.write(f"🏠 **{nom_v}** | 🔌 Rack: {rack_v} | SW: {sw_v} (P:{psw_v}) | PP: {pp_v} (P:{ppp_v}) | {row.get('dependencia','')}")
+                    st.write(f"**{i}.** 🏠 **{nom_v}** | 🔌 Rack: {rack_v} | SW: {sw_v} (P:{psw_v}) | PP: {pp_v} (P:{ppp_v}) | {row.get('dependencia','')}")
                 else:
-                    st.write(f"🚩 **{nom_v}** | {row.get('lugar','')} | {row.get('dependencia','')}")
+                    st.write(f"**{i}.** 🚩 **{nom_v}** | {row.get('lugar','')} | {row.get('dependencia','')}")
                 coment_row = str(row.get('comentarios','') or '')
                 caption_txt = f"Estado: {colores_a_nombres.get(row['color'], '??')}"
                 if coment_row:
