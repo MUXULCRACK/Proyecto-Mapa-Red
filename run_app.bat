@@ -1,10 +1,37 @@
 @echo off
+setlocal
+
 echo =========================================
 echo   Mapa Interactivo de Red - Launcher
 echo =========================================
 echo.
+
 echo Verificando dependencias...
-:: C:\Users\Huawei\AppData\Local\Microsoft\WindowsApps\python.exe -m pip install streamlit streamlit-image-coordinates pandas pillow --quiet --user >nul 2>&1
+where python >nul 2>&1
+if errorlevel 1 (
+    where py >nul 2>&1
+    if errorlevel 1 (
+        echo No se encontró Python en el PATH.
+        echo Instala Python y vuelve a ejecutar este archivo.
+        pause
+        exit /b 1
+    ) else (
+        set "PYCMD=py -3"
+    )
+) else (
+    set "PYCMD=python"
+)
+
+if exist "%~dp0requirements.txt" (
+    %PYCMD% -m pip install -r "%~dp0requirements.txt" --quiet --user >nul 2>&1
+) else (
+    %PYCMD% -m pip install streamlit streamlit-image-coordinates pandas pillow --quiet --user >nul 2>&1
+)
+if errorlevel 1 (
+    echo Error al instalar dependencias. Revisa tu instalación de Python.
+    pause
+    exit /b 1
+)
 
 echo.
 echo Iniciando aplicación Streamlit...
@@ -14,6 +41,8 @@ echo Para detener la aplicación, presiona Ctrl+C
 echo =========================================
 echo.
 
-C:\Users\Huawei\AppData\Local\Microsoft\WindowsApps\python.exe -m streamlit run app.py
+pushd "%~dp0"
+%PYCMD% -m streamlit run app.py
+popd
 
 pause
