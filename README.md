@@ -92,6 +92,7 @@ pillow
 | 🔵 Azul | Sin identificar y funcionando | Equipo funcionando pero aún no identificado |
 
 ---
+Añadir amarillo y verde oscuro
 
 ## ⚙️ Catálogos (barra lateral)
 
