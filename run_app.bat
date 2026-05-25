@@ -7,19 +7,23 @@ echo =========================================
 echo.
 
 echo Verificando dependencias...
-where python >nul 2>&1
-if errorlevel 1 (
-    where py >nul 2>&1
-    if errorlevel 1 (
-        echo No se encontró Python en el PATH.
-        echo Instala Python y vuelve a ejecutar este archivo.
-        pause
-        exit /b 1
-    ) else (
-        set "PYCMD=py -3"
-    )
+if exist "C:\Users\Huawei\AppData\Local\Microsoft\WindowsApps\python.exe" (
+    set "PYCMD=C:\Users\Huawei\AppData\Local\Microsoft\WindowsApps\python.exe"
 ) else (
-    set "PYCMD=python"
+    where python >nul 2>&1
+    if errorlevel 1 (
+        where py >nul 2>&1
+        if errorlevel 1 (
+            echo No se encontró Python en el PATH.
+            echo Instala Python y vuelve a ejecutar este archivo.
+            pause
+            exit /b 1
+        ) else (
+            set "PYCMD=py -3"
+        )
+    ) else (
+        set "PYCMD=python"
+    )
 )
 
 if exist "%~dp0requirements.txt" (

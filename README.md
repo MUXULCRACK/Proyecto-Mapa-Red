@@ -94,7 +94,6 @@ pillow
 | 🟡 Amarillo | Funcionando sin usar | Puntos ubicados con conexión al switch, sin uso actual pero funcionales (sirve) |
 
 ---
-Añadir amarillo y verde oscuro
 
 ## ⚙️ Catálogos (barra lateral)
 
