@@ -7,8 +7,8 @@ echo =========================================
 echo.
 
 echo Verificando dependencias...
-if exist "C:\Users\Huawei\AppData\Local\Microsoft\WindowsApps\python.exe" (
-    set "PYCMD=C:\Users\Huawei\AppData\Local\Microsoft\WindowsApps\python.exe"
+if exist "%LOCALAPPDATA%\Microsoft\WindowsApps\python.exe" (
+    set "PYCMD=%LOCALAPPDATA%\Microsoft\WindowsApps\python.exe"
 ) else (
     where python >nul 2>&1
     if errorlevel 1 (
