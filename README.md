@@ -86,10 +86,12 @@ pillow
 | Color | Estado | Descripción |
 |---|---|---|
 | 🟢 Verde | Funcionando y ubicado | Equipo identificado, conectado y operativo |
+| 🟩 Verde Oscuro | Funcionando directos | Punto directo (sin patch panel), identificado y operativo |
 | 🔴 Rojo | No sirve y ubicado | Equipo identificado pero sin funcionamiento |
 | 🟠 Naranja | Ubicado sin switch | Equipo ubicado, sin conexión a switch registrada |
 | 🟣 Morado | Ponchado erróneo | Equipo ubicado, pero con un ponchado incorrecto (sin información del switch) |
 | 🔵 Azul | Sin identificar y funcionando | Equipo funcionando pero aún no identificado |
+| 🟡 Amarillo | Funcionando sin usar | Puntos ubicados con conexión al switch, sin uso actual pero funcionales (sirve) |
 
 ---
 Añadir amarillo y verde oscuro
