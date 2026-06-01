@@ -26,16 +26,34 @@ CSV_COLUMNS = ["x","y","color","rack","switch","patch_panel","puerto_switch","pu
 
 def create_or_fix_csv(filename, columns):
     try:
-        df = pd.read_csv(filename)
-        # Agregar columnas faltantes sin borrar datos
+        # Leer todo como string inicialmente para evitar inferencias incorrectas de tipo (ej. float64)
+        df = pd.read_csv(filename, dtype=str)
+        # Agregar columnas faltantes
         for col in columns:
             if col not in df.columns:
                 df[col] = ""
         df = df[columns]
+        
+        # Convertir las coordenadas X e Y a numérico si existen
+        for coord in ["x", "y"]:
+            if coord in df.columns:
+                df[coord] = pd.to_numeric(df[coord], errors="coerce").fillna(0)
+                
+        # Asegurar que todas las demás columnas no tengan NaN y sean de tipo string
+        for col in df.columns:
+            if col not in ["x", "y"]:
+                df[col] = df[col].fillna("").astype(str)
+                
         df.to_csv(filename, index=False)
         return df
     except (FileNotFoundError, pd.errors.EmptyDataError, ValueError):
         df = pd.DataFrame(columns=columns)
+        for coord in ["x", "y"]:
+            if coord in df.columns:
+                df[coord] = 0
+        for col in df.columns:
+            if col not in ["x", "y"]:
+                df[col] = ""
         df.to_csv(filename, index=False)
         return df
 
