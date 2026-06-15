@@ -7,32 +7,30 @@ echo =========================================
 echo.
 
 echo Verificando dependencias...
-if exist "%LOCALAPPDATA%\Microsoft\WindowsApps\python.exe" (
-    set "PYCMD=%LOCALAPPDATA%\Microsoft\WindowsApps\python.exe"
+set "PYCMD=python"
+where py >nul 2>&1
+if %ERRORLEVEL%==0 (
+    set "PYCMD=py -3"
 ) else (
     where python >nul 2>&1
-    if errorlevel 1 (
-        where py >nul 2>&1
-        if errorlevel 1 (
-            echo No se encontró Python en el PATH.
-            echo Instala Python y vuelve a ejecutar este archivo.
-            pause
-            exit /b 1
-        ) else (
-            set "PYCMD=py -3"
-        )
-    ) else (
-        set "PYCMD=python"
+    if %ERRORLEVEL%==1 (
+        echo No se encontró Python en el PATH.
+        echo Instala Python y vuelve a ejecutar este archivo.
+        pause
+        exit /b 1
     )
 )
 
+echo Usando %PYCMD% para instalar dependencias...
 if exist "%~dp0requirements.txt" (
-    %PYCMD% -m pip install -r "%~dp0requirements.txt" --quiet --user >nul 2>&1
+    %PYCMD% -m pip install -r "%~dp0requirements.txt" --user
 ) else (
-    %PYCMD% -m pip install streamlit streamlit-image-coordinates pandas pillow --quiet --user >nul 2>&1
+    %PYCMD% -m pip install streamlit streamlit-image-coordinates pandas pillow --user
 )
 if errorlevel 1 (
-    echo Error al instalar dependencias. Revisa tu instalación de Python.
+    echo.
+    echo Error al instalar dependencias con %PYCMD%.
+    echo Revisa el mensaje anterior para identificar el problema.
     pause
     exit /b 1
 )
