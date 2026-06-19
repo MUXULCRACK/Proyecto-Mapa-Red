@@ -13,7 +13,7 @@ if %ERRORLEVEL%==0 (
     set "PYCMD=py -3"
 ) else (
     where python >nul 2>&1
-    if %ERRORLEVEL%==1 (
+    if errorlevel 1 (
         echo No se encontró Python en el PATH.
         echo Instala Python y vuelve a ejecutar este archivo.
         pause
