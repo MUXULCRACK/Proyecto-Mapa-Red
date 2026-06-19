@@ -21,18 +21,24 @@ if %ERRORLEVEL%==0 (
     )
 )
 
-echo Usando %PYCMD% para instalar dependencias...
-if exist "%~dp0requirements.txt" (
-    %PYCMD% -m pip install -r "%~dp0requirements.txt" --user
+echo Verificando paquetes de Python necesarios...
+%PYCMD% -c "import streamlit, streamlit_image_coordinates, pandas, PIL" >nul 2>&1
+if %ERRORLEVEL% neq 0 (
+    echo No se encontraron todas las dependencias instaladas. Instalando...
+    if exist "%~dp0requirements.txt" (
+        %PYCMD% -m pip install -r "%~dp0requirements.txt" --user
+    ) else (
+        %PYCMD% -m pip install streamlit streamlit-image-coordinates pandas pillow --user
+    )
+    if errorlevel 1 (
+        echo.
+        echo Error al instalar dependencias con %PYCMD%.
+        echo Revisa el mensaje anterior para identificar el problema.
+        pause
+        exit /b 1
+    )
 ) else (
-    %PYCMD% -m pip install streamlit streamlit-image-coordinates pandas pillow --user
-)
-if errorlevel 1 (
-    echo.
-    echo Error al instalar dependencias con %PYCMD%.
-    echo Revisa el mensaje anterior para identificar el problema.
-    pause
-    exit /b 1
+    echo Las dependencias necesarias ya están instaladas.
 )
 
 echo.
