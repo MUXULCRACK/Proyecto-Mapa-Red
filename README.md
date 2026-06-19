@@ -11,6 +11,13 @@ Haz doble clic en el archivo **`run_app.bat`**.
 
 > Esto instalará las dependencias necesarias automáticamente y abrirá la aplicación en tu navegador.
 
+Si el script no funciona, abre una terminal en la carpeta del proyecto y ejecuta:
+
+```
+pip install -r requirements.txt
+python -m streamlit run app.py
+```
+
 Para detener la aplicación, presiona `Ctrl+C` en la ventana de comandos/terminal donde se está ejecutando.
 
 ---
