@@ -9,11 +9,6 @@ Aplicación web interactiva construida con **Streamlit** para visualizar, regist
 **En Windows:**
 Haz doble clic en el archivo **`run_app.bat`**.
 
-**En Mac o Linux:**
-1. Abre una terminal en la carpeta del proyecto.
-2. Da permisos de ejecución al script (solo la primera vez): `chmod +x run_app.sh`
-3. Ejecuta el script: `./run_app.sh`
-
 > Esto instalará las dependencias necesarias automáticamente y abrirá la aplicación en tu navegador.
 
 Para detener la aplicación, presiona `Ctrl+C` en la ventana de comandos/terminal donde se está ejecutando.
@@ -50,7 +45,6 @@ pillow
 | `catalogo_lugares.csv` | Catálogo de lugares/áreas |
 | `catalogo_dependencias.csv` | Catálogo de dependencias/departamentos |
 | `run_app.bat` | Lanzador de la aplicación (Windows) |
-| `run_app.sh` | Lanzador de la aplicación (Mac/Linux) |
 | `requirements.txt` | Dependencias de Python |
 
 ---

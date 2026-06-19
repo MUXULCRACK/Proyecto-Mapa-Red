@@ -1,2 +1,3 @@
 x,y,color,rack,switch,patch_panel,puerto_switch,puerto_patch,dependencia,lugar,nomenclatura,comentarios,fecha_hora,ip
 429,1050,#00FF00,RK1,,,,,CM,Sistemas,Local,,TI-1A,2026-02-19 08:40:21
+417,342,#0000FF,,,,,,CM(100),SISTEMAS (SIST),EJEM1,(124),2026-06-18 16:32:47,Local
