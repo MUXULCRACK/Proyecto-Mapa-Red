@@ -21,10 +21,26 @@ if %ERRORLEVEL%==0 (
     )
 )
 
-echo Verificando paquetes de Python necesarios...
-%PYCMD% -c "import streamlit, streamlit_image_coordinates, pandas, PIL" >nul 2>&1
-if %ERRORLEVEL% neq 0 (
-    echo No se encontraron todas las dependencias instaladas. Instalando...
+echo Python encontrado: %PYCMD%
+
+echo Intentando ejecutar Streamlit primero...
+
+echo.
+echo Iniciando aplicación Streamlit...
+echo Si falta alguna dependencia, el script la instalará y reintentará.
+echo.
+echo Para detener la aplicación más tarde, presiona Ctrl+C.
+echo =========================================
+echo.
+
+pushd "%~dp0"
+%PYCMD% -m streamlit run app.py
+set "LASTERROR=%ERRORLEVEL%"
+popd
+
+if %LASTERROR% neq 0 (
+    echo.
+    echo Streamlit no pudo iniciarse. Intentando instalar las dependencias necesarias...
     if exist "%~dp0requirements.txt" (
         %PYCMD% -m pip install -r "%~dp0requirements.txt" --user
     ) else (
@@ -37,20 +53,14 @@ if %ERRORLEVEL% neq 0 (
         pause
         exit /b 1
     )
-) else (
-    echo Las dependencias necesarias ya están instaladas.
+    echo.
+    echo Dependencias instaladas. Reintentando ejecutar Streamlit...
+    echo.
+    echo Iniciando aplicación Streamlit...
+    echo.
+    pushd "%~dp0"
+    %PYCMD% -m streamlit run app.py
+    popd
 )
-
-echo.
-echo Iniciando aplicación Streamlit...
-echo La aplicación se abrirá automáticamente en tu navegador.
-echo.
-echo Para detener la aplicación, presiona Ctrl+C
-echo =========================================
-echo.
-
-pushd "%~dp0"
-%PYCMD% -m streamlit run app.py
-popd
 
 pause
