@@ -9,7 +9,7 @@ from datetime import datetime
 # CONFIGURACIÓN INICIAL
 # ===========================================
 st.set_page_config(layout="wide")
-st.title("Mapa Interactivo de Red – Empresa EEP S.A. E.S.P.")
+st.title("Mapa Interactivo de Red – Empresa")
 
 CSV_FILE = "network_points.csv"
 DELETED_CSV_FILE = "deleted_points.csv"
