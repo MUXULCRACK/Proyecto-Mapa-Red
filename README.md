@@ -27,6 +27,14 @@ Para detener la aplicación, presiona `Ctrl+C` en la ventana de comandos/termina
 - Python instalado en el sistema
 - Conexión a internet (solo la primera vez para instalar dependencias)
 
+## ⚙️ Requisitos no funcionales
+
+- Ejecución local: la aplicación se inicia y usa en el equipo donde se ejecuta.
+- Disponibilidad: debe iniciar con `run_app.bat` y detenerse con `Ctrl+C`.
+- Rendimiento: respuesta interactiva y navegación fluida para hasta 1,000 puntos de red.
+- Seguridad: no expone el servicio a la red externa por defecto.
+- Mantenibilidad: dependencias administradas en `requirements.txt` y código Python legible.
+
 Dependencias (se instalan automáticamente):
 
 ```
