@@ -435,7 +435,7 @@ if clicked_map2:
             else:
                 st.warning("No hay ningún punto cerca de donde hiciste clic.")
 
-if "moving_idx" in st.session_state:
+if "moving_idx" in st.session_state and clicked_map2 is None:
     st.warning("🚨 **MODO RE-UBICACIÓN ACTIVO**: Haz clic en cualquier parte del **Mapa 2** para mover el punto seleccionado.")
     if st.button("❌ Cancelar Re-ubicación"):
         del st.session_state["moving_idx"]
