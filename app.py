@@ -384,16 +384,26 @@ if clicked_map2:
     else:
         if "moving_idx" in st.session_state:
             m_idx = st.session_state["moving_idx"]
-            df.loc[m_idx, ["x", "y"]] = [cx, cy]
-            df.to_csv(CSV_FILE, index=False)
-            st.success(f"✅ Punto '{df.loc[m_idx, 'nomenclatura']}' re-ubicado correctamente.")
-            del st.session_state["moving_idx"]
-            st.rerun()
-
-        if not df_f.empty:
-            df_f['dist'] = (df_f['x'] - cx)**2 + (df_f['y'] - cy)**2
-            closest_idx = df_f['dist'].idxmin()
-            closest = df_f.loc[closest_idx]
+            st.session_state["moving_pos"] = [cx, cy]
+            new_x, new_y = st.session_state["moving_pos"]
+            st.info(f"📍 Nueva ubicación seleccionada: ({new_x}, {new_y})")
+            if st.button("✅ Confirmar Re-ubicación", key="confirm_move"):
+                df.loc[m_idx, ["x", "y"]] = [new_x, new_y]
+                df.to_csv(CSV_FILE, index=False)
+                st.success(f"✅ Punto '{df.loc[m_idx, 'nomenclatura']}' re-ubicado correctamente.")
+                del st.session_state["moving_idx"]
+                del st.session_state["moving_pos"]
+                st.rerun()
+            if st.button("❌ Cancelar Re-ubicación", key="cancel_move"):
+                del st.session_state["moving_idx"]
+                del st.session_state["moving_pos"]
+                st.warning("❌ Reubicación cancelada.")
+                st.rerun()
+        else:
+            if not df_f.empty:
+                df_f['dist'] = (df_f['x'] - cx)**2 + (df_f['y'] - cy)**2
+                closest_idx = df_f['dist'].idxmin()
+                closest = df_f.loc[closest_idx]
 
             if closest['dist'] < 400:
                 st.toast(f"📍 Seleccionado: {closest['nomenclatura']}", icon="🎯")
