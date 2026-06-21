@@ -1,4 +1,4 @@
-# 🗺️ Mapa Interactivo de Red – Empresa
+# 🗺️ Mapa Interactivo de Red – Empresa EEP S.A. E.S.P.
 
 Aplicación web interactiva construida con **Streamlit** para visualizar, registrar y gestionar puntos de red sobre un croquis de instalaciones. Permite ubicar equipos en un mapa, asociarlos a racks, switches y patch panels, y hacer seguimiento del estado de cada conexión.
 
