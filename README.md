@@ -2,6 +2,12 @@
 
 Aplicación web interactiva construida con **Streamlit** para visualizar, registrar y gestionar puntos de red sobre un croquis de instalaciones. Permite ubicar equipos en un mapa, asociarlos a racks, switches y patch panels, y hacer seguimiento del estado de cada conexión.
 
+> [!IMPORTANT]
+> **Nota Importante:**
+> La repartición y ubicación de los puntos, dividida en 16 lugares, se puede consultar en:
+> * El archivo PDF local: [GUIA NOMENCLATURA LUGARES.pdf](GUIA%20NOMENCLATURA%20LUGARES.pdf) (ubicado en `Proyecto_red\GUIA NOMENCLATURA LUGARES.pdf`).
+> * En línea en [Google Drive](https://drive.google.com/file/d/1zpO_0_YFtw9AZw9klQM_NagLzTEbVxY3/view?usp=drive_link).
+
 ---
 
 ## 🚀 Cómo ejecutar
